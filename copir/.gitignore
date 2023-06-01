@@ -21,15 +21,11 @@
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
-replay_pid*
-
 
 HELP.md
-gradlew
-gradlew.bat
 .gradle
 build/
-gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
 
@@ -47,6 +43,7 @@ bin/
 
 ### IntelliJ IDEA ###
 .idea
+**/**/.idea
 *.iws
 *.iml
 *.ipr
