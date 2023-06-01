@@ -1,0 +1,2 @@
+path_from_folder ~ path_to_folder
+/home/deck/.../Sega/Game Gear ~ /run/media/.../roms/gamegear
