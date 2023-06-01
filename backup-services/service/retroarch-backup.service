@@ -1,0 +1,9 @@
+[Unit]
+Description=Copy retroarch files to backup folders
+
+[Service]
+Type=simple
+ExecStart=sh -c 'rsync -avzhm --include=\'saves/*\' --include=\'screenshots/*\' --include=\'states/*\' --include=\'system/*\' --include=\'retroarch.cfg\' --include=\'*/\'  --exclude=\'*\'  /home/deck/.var/app/org.libretro.RetroArch/config/retroarch/ /home/deck/Documents/retroarch_backup/'
+
+[Install]
+WantedBy=default.target

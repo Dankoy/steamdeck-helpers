@@ -1,0 +1,9 @@
+[Unit]
+Description=Run retroarch backup every 30 minutes
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target

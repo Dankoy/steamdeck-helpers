@@ -1,0 +1,9 @@
+[Unit]
+Description=Copy roms to emu deck folder
+
+[Service]
+Type=oneshot
+ExecStart=sh -c 'python ~/Documents/.git/steamdeck-helpers/copir-py/main.py'
+
+[Install]
+WantedBy=default.target
