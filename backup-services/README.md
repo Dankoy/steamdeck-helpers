@@ -22,3 +22,4 @@ Also, it is necessary to create timer for backup service
 1) Start service - `systemctl --user start some-service-name`
 2) Enable service - `systemctl --user enable --now some-service-name.timer`
 3) After each modification in service or timer - `systemctl --user daemon-reload`
+4) Read logs - `journalctl --user -u some-service-name`
