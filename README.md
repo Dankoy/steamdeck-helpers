@@ -17,5 +17,6 @@ The same as copir but written on python and can simply run on steamdeck
 Contains linux services to run scripts and timer necessary for:
 
 1) Backup retroarch saves
-2) Copy roms from custom folders to flat folder used by [EmuDeck](https://www.emudeck.com/) using
+2) Backup yuzu saves
+3) Copy roms from custom folders to flat folder used by [EmuDeck](https://www.emudeck.com/) using
    [copir-py](copir-py) project
