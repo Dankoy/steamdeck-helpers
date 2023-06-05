@@ -4,7 +4,7 @@ directories_dict = {}
 
 
 def parse_file():
-    with open("dirs.txt") as f:
+    with open(DIR_FILE) as f:
         for line in f:
             (key, val) = line.split("~")
             key = key.strip()
