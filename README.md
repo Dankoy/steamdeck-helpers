@@ -6,7 +6,12 @@ Contains projects for different purposes to automate some tedious tasks
 
 Copy files from one directory, which contains multiple nested directories to one flat folder.    
 Mainly code made to automate copy ROMS for emulation to flat folder
-of [EmuDeck](https://www.emudeck.com/) for Steam Deck.
+of [EmuDeck](https://www.emudeck.com/) for Steam Deck. 
+
+While Steam Deck doesn't support java installation or at least docker installation without shaman
+dances, this project is not used at all, and present here as an example, nothing more. 
+
+So python is the only way to run scripts without additional services installation.
 
 # copir-py [link](copir-py)
 
