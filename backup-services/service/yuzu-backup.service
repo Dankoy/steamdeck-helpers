@@ -1,0 +1,9 @@
+[Unit]
+Description=Copy yuzu saves to backup folders
+
+[Service]
+Type=simple
+ExecStart=sh -c 'rsync -avzhm path-to-saves-location /home/deck/Documents/yuzu_backup/'
+
+[Install]
+WantedBy=default.target
