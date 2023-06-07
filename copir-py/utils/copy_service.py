@@ -32,8 +32,12 @@ def copy_directory_from_to_as_is(path_from, path_to):
     # Iterate through hashmap to copy
 
     for dir_from, dir_to in map.items():
-        shutil.copytree(dir_from, dir_to)
-        logging.info(f"Copied directory as is from {dir_from} to {dir_to}")
+
+        try:
+            shutil.copytree(dir_from, dir_to)
+            logging.info(f"Copied directory as is from {dir_from} to {dir_to}")
+        except FileExistsError:
+            logging.info(f"Unable to copy from - {dir_from}. Directory already exists - {dir_to}")
 
 
 def copy_files_from_to_flat_directory(path_from, path_to):
