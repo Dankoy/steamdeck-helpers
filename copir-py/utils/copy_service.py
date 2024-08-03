@@ -1,7 +1,6 @@
 import logging
 import os
 import pathlib
-import shutil
 import sys
 
 logging.root.setLevel(
@@ -9,10 +8,11 @@ logging.root.setLevel(
 )
 
 
-def copy_directory_from_to_as_is(path_from, path_to):
+def copy_directory_from_to_as_is(action, path_from, path_to):
     """
-    Copy folder of games as is.
+    Copy folder of games as is
 
+    :param action lambda from {utils.action_service.py}
     :param path_from: path from which contains multiple folders with games
     :param path_to: path to
     :return: None
@@ -34,17 +34,19 @@ def copy_directory_from_to_as_is(path_from, path_to):
     for dir_from, dir_to in map.items():
 
         try:
-            shutil.copytree(dir_from, dir_to)
+            action(dir_from, dir_to)
+            # shutil.copytree(dir_from, dir_to)
             logging.info(f"Copied directory as is from {dir_from} to {dir_to}")
         except FileExistsError:
             logging.info(f"Unable to copy from - {dir_from}. Directory already exists - {dir_to}")
 
 
-def copy_files_from_to_flat_directory(path_from, path_to):
+def copy_files_from_to_flat_directory(action, path_from, path_to):
     """
 
     Copy all files from directory hierarchy to flat folder
 
+    :param action lambda from utils.action_service.py
     :param path_from: path from
     :param path_to:  path to
     :return: None
@@ -59,9 +61,9 @@ def copy_files_from_to_flat_directory(path_from, path_to):
 
             for file in files:
                 logging.info(f"Copy file {file} to {path_to}")
-                shutil.copy2(file, path_to)
+                action(file, path_to)
 
-            copy_files_from_to_flat_directory(directory, path_to)
+            copy_files_from_to_flat_directory(action, directory, path_to)
 
     except FileNotFoundError:
         logging.error(f"Directory not found'{path_from}'")

@@ -7,7 +7,7 @@ without shaman dancing.
 
 ### Create virtual environment (not necessary)
 
-`pyenv virtualenv 3.9.13 copir-py`
+`pyenv virtualenv 3.12.4 copir-py`
 
 ### Activate virtual environment (not necessary)
 
@@ -19,6 +19,12 @@ without shaman dancing.
 
 tilda ~ is a delimiter in case there are spaces in directory names
 
-### Run script
+### Run script to copy files
 
-`python main.py`
+`python main.py -t copy`
+
+### ### Run script to symlink files
+
+`python main.py -t symlink`
+
+Of course works only on same file system
