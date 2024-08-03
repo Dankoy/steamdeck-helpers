@@ -19,6 +19,12 @@ without shaman dancing.
 
 tilda ~ is a delimiter in case there are spaces in directory names
 
-### Run script
+### Run script to copy files
 
-`python main.py`
+`python main.py -t copy`
+
+### ### Run script to symlink files
+
+`python main.py -t symlink`
+
+Of course works only on same file system
