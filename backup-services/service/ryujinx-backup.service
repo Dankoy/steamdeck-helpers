@@ -1,0 +1,9 @@
+[Unit]
+Description=Copy ryujinx saves to backup folders
+
+[Service]
+Type=simple
+ExecStart=sh -c 'rsync -avzhm /run/media/deck/0f782a07-7903-4d80-9796-2356c3659f5e/Emulation/saves/ryujinx/ /home/deck/Documents/backups/ryujinx_backup/'
+
+[Install]
+WantedBy=default.target
