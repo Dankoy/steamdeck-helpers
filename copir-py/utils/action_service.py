@@ -15,6 +15,13 @@ def copy_file_tree_action(dir_from, dir_to):
     shutil.copytree(dir_from, dir_to)
 
 
+def copy_file_tree_replace_existing_action(dir_from, dir_to):
+    try:
+        shutil.copytree(dir_from, dir_to, copy_function=shutil.copy2, dirs_exist_ok=True)
+    except shutil.Error:
+        logging.error(f"Directory '{dir_from}' already exists in {dir_to}. Check for symlinks")
+
+
 def symlink_file_action(path_from, path_to):
     try:
         basename = ntpath.basename(path_from)
