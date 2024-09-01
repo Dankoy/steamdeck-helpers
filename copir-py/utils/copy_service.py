@@ -78,10 +78,14 @@ def get_all_nested_dirs(path):
     """
 
     dirs = []
-    for file in os.listdir(path):
-        d = os.path.join(path, file)
-        if os.path.isdir(d):
-            dirs.append(d)
+
+    if os.path.exists(path):
+        for file in os.listdir(path):
+            d = os.path.join(path, file)
+            if os.path.isdir(d):
+                dirs.append(d)
+    else:
+        logging.warning(f"Couldn't find directory {path}. Ignoring it.")
 
     return dirs
 
