@@ -35,15 +35,14 @@ Emudeck installs ryujinx in it's own folder. Also it creates folder with name 'E
 staff from many different emulators. For linux emudeck creates symlink folders in path 'Emulation/saves/ryujinx/' to
 save and saveMeta folder in actual ryujinx installation folder. For windows emudeck do this the other way around and
 creates normal folders in 'Emulation/saves/ryujinx/' and symlink them in ryujinx installation, which is the correct way
-to
-do staff.
+to do staff.
 
 So if you try to backup symlinks then it's pointless. You have to create normal folders in 'Emulation/saves/ryujinx/'
 and symlink them in ryujinx installation folder.
 
 !!! After you do that NEVER update emulator configurations in EmuDeck GUI, it will break your saves. !!!
 
-With suck tweaks it's possible to have actual multiplatform without conflicts.
+With such tweaks it's possible to have actual multiplatform without conflicts.
 
 ### Useful commands
 
