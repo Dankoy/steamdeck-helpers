@@ -34,6 +34,26 @@ ENV_DEST_FOLDER="$HOME/.steamdeck_helpers/env/"
 SERVICES_DEST_FOLDER="$HOME/.config/systemd/user/"
 
 BACKUP_RETENTION_COUNT=5
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+
+ENV_FILES=(
+        "eden-backup.env"
+        "retroarch-backup.env"
+        "ryujinx-backup.env"
+        "yuzu-backup.env"
+    )
+
+
+SERVICE_FILES=(
+        "emudeck-copy-roms.service"
+        "retroarch-backups.service"
+        "retroarch-backups.timer"
+        "yuzu-backups.service"
+        "yuzu-backups.timer"
+        "ryujinx-backups.service"
+        "ryujinx-backups.timer"
+    )
 
 # ---------- SYSTEMD RELOAD ------------
 systemd_reload() {
@@ -51,39 +71,17 @@ systemd_reload() {
 create_backup() {
     local dest="$1"
     local backup_name="$2"
-    shift 2
-    local files_to_backup=("$@")
     
-    if [[ ${#files_to_backup[@]} -eq 0 ]]; then
-        log_info "No files to backup. Skipping backup creation."
-        return 0
-    fi
+    local backup_file="${dest}${backup_name}_backup_${TIMESTAMP}.tar.gz"
     
-    local timestamp
-    timestamp=$(date +%Y%m%d_%H%M%S)
-    local backup_file="${dest}${backup_name}_backup_${timestamp}.tar.gz"
+    log_info "Creating backup to '$backup_file'..."
     
-    log_info "Creating backup of ${#files_to_backup[@]} file(s) to '$backup_file'..."
-    
-    # Проверяем, существуют ли файлы для бэкапа
-    local existing_files=()
-    for file in "${files_to_backup[@]}"; do
-        if [[ -f "${dest}${file}" ]]; then
-            existing_files+=("$file")
-        fi
-    done
-    
-    if [[ ${#existing_files[@]} -eq 0 ]]; then
-        log_info "None of the specified files exist in '$dest'. No backup needed."
-        return 0
-    fi
-    
-    # Создаём бэкап только указанных файлов
-    if tar -czf "$backup_file" -C "$dest" --exclude='*.tar.gz' "${existing_files[@]}" 2>/dev/null; then
-        log_info "Backup created successfully: $(basename "$backup_file") (${#existing_files[@]} files)"
+    # Создаём бэкап, исключая уже существующие .tar.gz файлы
+    if tar -czf "$backup_file" --exclude='*.tar.gz' -C "$dest" . 2>/dev/null; then
+        log_info "✅ Backup created successfully: $(basename "$backup_file")"
         return 0
     else
-        log_error "Failed to create backup!"
+        log_error "❌ Failed to create backup!"
         return 1
     fi
 }
@@ -128,7 +126,7 @@ cleanup_old_backups() {
             fi
         done
         
-        log_info "Cleanup completed for '$backup_pattern' in '$dest'."
+        log_info "✅ Cleanup completed for '$backup_pattern' in '$dest'."
     else
         log_info "No cleanup needed. Current count ($total_count) is within limit ($BACKUP_RETENTION_COUNT)."
     fi
@@ -141,64 +139,40 @@ cleanup_old_backups() {
 copy_files() {
     local src="$1"
     local dest="$2"
-    local -n files_array="$3"  # Ссылка на массив
-    
+
+
     # Check source folder
+
     if ! check_folder_exists "$src"; then
         log_error "Source directory '$src' does not exist!"
         return 1
     fi
-    
+
     if check_folder_empty "$src"; then
         log_info "Source directory '$src' is empty. Nothing to copy."
         return 0
     fi
-    
+
     # Check destination folder
+
     if ! check_folder_exists "$dest"; then
         log_error "Destination directory '$dest' does not exist!"
         return 1
     fi
-    
-    # Проверяем, есть ли файлы для копирования
-    local files_to_copy=()
-    for file in "${files_array[@]}"; do
-        if [[ -f "${src}${file}" ]]; then
-            files_to_copy+=("$file")
-        else
-            log_warn "File '${file}' not found in source, skipping."
-        fi
-    done
-    
-    if [[ ${#files_to_copy[@]} -eq 0 ]]; then
-        log_warn "No files to copy from '$src'."
-        return 0
-    fi
-    
-    # Копируем только указанные файлы
-    log_info "Copying ${#files_to_copy[@]} file(s) from '$src' to '$dest'..."
-    
-    local copy_success=true
-    for file in "${files_to_copy[@]}"; do
-        if cp -v "${src}${file}" "${dest}" 2>/dev/null; then
-            log_info "Copied: $file"
-        else
-            log_error "Failed to copy: $file"
-            copy_success=false
-        fi
-    done
-    
-    if $copy_success; then
-        log_info "Copy completed successfully into '$dest'"
+
+    if cp -v "$src"* "$dest" 2>/dev/null; then
+        log_info "Copy successfull into '$dest'"
         return 0
     else
-        log_error "Copy completed with errors!"
+        log_error "Copy failed into '$dest'"
         return 1
     fi
+
 }
 
 # ---------- CHECK FOLDERS ----------
 check_folder_exists() {
+
     local dir="$1"
 
     if [[ ! -d "$dir" ]]; then
@@ -214,7 +188,7 @@ check_folder_empty() {
     local dir="$1"
 
     if ! check_folder_exists "$dir"; then
-        log_info "Directory '$dir' doesn't exist. Considered as empty."
+        log_info "Directory '$dir' does not exist!"
         return 0 # Empty
     fi
 
@@ -225,65 +199,34 @@ check_folder_empty() {
         log_info "Directory '$dir' is not empty."
         return 1 # Not empty
     fi
+
 }
 
-# -------- CHECK IF DIRECTORY HAS SPECIFIC FILES ---------
-check_files_exist_in_dest() {
-    local dest="$1"
-    shift
-    local files_to_check=("$@")
+# -------- CHECK IF DIRECTORY HAS FILES (excluding backups) ---------
+check_folder_empty_for_backups() {
+    local dir="$1"
     
-    if ! check_folder_exists "$dest"; then
-        log_info "Directory '$dest' doesn't exist. Considered as empty."
+    if ! check_folder_exists "$dir"; then
+        log_info "Directory '$dir' doesn't exist. Considered as empty."
         return 1 # Нет файлов
     fi
     
-    # Проверяем, есть ли указанные файлы в целевой директории
-    local found_files=()
-    for file in "${files_to_check[@]}"; do
-        if [[ -f "${dest}${file}" ]]; then
-            found_files+=("$file")
-        fi
-    done
+    # Проверяем, есть ли файлы, исключая .tar.gz бэкапы
+    local files_list
+    files_list=$(find "$dir" -maxdepth 1 -type f ! -name "*.tar.gz" 2>/dev/null)
     
-    if [[ ${#found_files[@]} -gt 0 ]]; then
-        log_info "Directory '$dest' has ${#found_files[@]} file(s) to backup."
+    if [[ -n "$files_list" ]]; then
+        log_info "Directory '$dir' has files (excluding backups)."
         return 0 # Есть файлы
     else
-        log_info "Directory '$dest' has none of the specified files."
+        log_info "Directory '$dir' has no files (excluding backups)."
         return 1 # Нет файлов
     fi
-}
-
-# -------- GET FILES FROM SOURCE DIRECTORY ---------
-get_files_from_source() {
-    local src="$1"
-    local -n result_array="$2"
-    
-    if ! check_folder_exists "$src"; then
-        log_error "Source directory '$src' not found!"
-        return 1
-    fi
-    
-    # Получаем список файлов (только файлы, не директории)
-    result_array=()
-    while IFS= read -r file; do
-        if [[ -f "${src}${file}" ]]; then
-            result_array+=("$file")
-        fi
-    done < <(ls -A "$src" 2>/dev/null)
-    
-    if [[ ${#result_array[@]} -eq 0 ]]; then
-        log_warn "No files found in source directory '$src'."
-        return 1
-    fi
-    
-    log_info "Found ${#result_array[@]} file(s) in source directory: ${result_array[*]}"
-    return 0
 }
 
 # ------------ PREPARE DIRECTORY ---------
 prepare_directory() {
+
     local src="$1"
     local dest="$2"
     local description="$3"
@@ -297,6 +240,7 @@ prepare_directory() {
         log_error "Source directory '$src' not found! Cannot continue."
         return 1
     fi
+
 
     # Check destination directory
     if check_folder_exists "$dest"; then
@@ -315,41 +259,33 @@ prepare_directory() {
     fi
 }
 
+
 upsert() {
+
     local src="$1"
     local dest="$2"
     local backup_name="$3"
-    shift 3
-    local files_to_manage=("$@")
-    
+    local backup_files="$4"
+
     log_info "Upsert operation for '$src' -> '$dest'"
-    log_info "Managing ${#files_to_manage[@]} file(s): ${files_to_manage[*]}"
-    
-    # Проверяем, есть ли файлы для управления
-    if [[ ${#files_to_manage[@]} -eq 0 ]]; then
-        log_error "No files specified for upsert!"
-        return 1
-    fi
-    
-    # Проверяем, есть ли указанные файлы в целевой директории
-    if check_files_exist_in_dest "$dest" "${files_to_manage[@]}"; then
-        log_warn "Destination directory '$dest' has files that need backup..."
+
+    if check_folder_empty_for_backups "$dest"; then
         
-        # Создаём бэкап только существующих файлов
-        if ! create_backup "$dest" "$backup_name" "${files_to_manage[@]}"; then
-            log_error "Backup failed! Aborting update to prevent data loss."
+        log_warn "Destination directory '$dest' has files. Creating backup before update..."
+        
+        cleanup_old_backups "$dest" "$backup_name" "$backup_files"
+
+        if ! create_backup "$dest" "$backup_name" "$backup_files"; then
+            log_error "Backup failed! Aborting copy to prevent data loss."
             return 1
         fi
-        
-        # Очищаем старые бэкапы
-        cleanup_old_backups "$dest" "$backup_name"
-        
-        # Копируем файлы
-        copy_files "$src" "$dest" files_to_manage
+
+        copy_files "$src" "$dest"
     else
-        log_info "Directory '$dest' has no files to backup. Initial install."
-        copy_files "$src" "$dest" files_to_manage
+        log_info "Directory '$dest' is empty. Initial install."
+        copy_files "$src" "$dest"
     fi
+
 }
 
 # ---------- MAIN FUNCTION ----------
@@ -376,35 +312,23 @@ main() {
     # 2. Prepare and process environment files
     log_info "Step 1: Processing environment files..."
     
-    # Получаем список файлов из исходной директории
-    local env_files=()
-    if get_files_from_source "$ENV_SRC_FOLDER" env_files; then
-        if prepare_directory "$ENV_SRC_FOLDER" "$ENV_DEST_FOLDER" "environment files"; then
-            log_info "Environment directory prepared successfully."
-            upsert "$ENV_SRC_FOLDER" "$ENV_DEST_FOLDER" "env" "${env_files[@]}"
-        else
-            log_error "Failed to prepare environment directory!"
-            exit 1
-        fi
+    if prepare_directory "$ENV_SRC_FOLDER" "$ENV_DEST_FOLDER" "environment files"; then
+        log_info "Environment directory prepared successfully."
+        upsert "$ENV_SRC_FOLDER" "$ENV_DEST_FOLDER" "env" "${ENV_FILES[@]}"
     else
-        log_warn "No environment files to process."
+        log_error "Failed to prepare environment directory!"
+        exit 1
     fi
 
     # 3. Prepare and process service files
     log_info "Step 2: Processing service files..."
     
-    # Получаем список файлов из исходной директории
-    local service_files=()
-    if get_files_from_source "$SERVICES_SRC_FOLDER" service_files; then
-        if prepare_directory "$SERVICES_SRC_FOLDER" "$SERVICES_DEST_FOLDER" "service files"; then
-            log_info "Service directory prepared successfully."
-            upsert "$SERVICES_SRC_FOLDER" "$SERVICES_DEST_FOLDER" "services" "${service_files[@]}"
-        else
-            log_error "Failed to prepare service directory!"
-            exit 1
-        fi
+    if prepare_directory "$SERVICES_SRC_FOLDER" "$SERVICES_DEST_FOLDER" "service files"; then
+        log_info "Service directory prepared successfully."
+        upsert "$SERVICES_SRC_FOLDER" "$SERVICES_DEST_FOLDER" "services" "${SERVICE_FILES[@]}"
     else
-        log_warn "No service files to process."
+        log_error "Failed to prepare service directory!"
+        exit 1
     fi
 
     # 4. Reload systemd
