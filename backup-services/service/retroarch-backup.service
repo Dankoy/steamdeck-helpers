@@ -3,6 +3,7 @@ Description=Copy retroarch files to backup folders
 
 [Service]
 Type=simple
+EnvironmentFile=~/.steamdeck_helpers/env/retroarch-backup.env
 ExecStart=sh -c 'rsync -avzhm --include=\'saves/**\' --include=\'screenshots/*\' --include=\'states/*\' --include=\'system/**\' --include=\'retroarch.cfg\' --include=\'*/\'  --exclude=\'*\'  ${source_folder} ${destination_folder}'
 
 [Install]

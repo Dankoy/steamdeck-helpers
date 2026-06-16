@@ -3,6 +3,7 @@ Description=Copy ryujinx saves to backup folders
 
 [Service]
 Type=simple
+EnvironmentFile=~/.steamdeck_helpers/env/ryujinx-backup.env
 ExecStart=sh -c 'rsync -avzhm ${source_folder} ${destination_folder}'
 
 [Install]
