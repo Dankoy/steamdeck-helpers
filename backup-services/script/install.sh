@@ -357,7 +357,7 @@ main() {
     log_info "=== INSTALL START ==="
     
     # 1. Check source directories
-    log_info "=========== Checking source directories...\n\n"
+    log_info "=========== Checking source directories...\n"
     
     if check_folder_exists "$ENV_SRC_FOLDER"; then
         log_info "Environment source directory exists."
@@ -374,7 +374,7 @@ main() {
     fi
 
     # 2. Prepare and process environment files
-    log_info "=========== Step 1: Processing environment files...\n\n"
+    log_info "=========== Step 1: Processing environment files...\n"
     
     # Получаем список файлов из исходной директории
     local env_files=()
@@ -391,7 +391,7 @@ main() {
     fi
 
     # 3. Prepare and process service files
-    log_info "=========== Step 2: Processing service files...\n\n"
+    log_info "=========== Step 2: Processing service files...\n"
     
     # Получаем список файлов из исходной директории
     local service_files=()
@@ -408,7 +408,7 @@ main() {
     fi
 
     # 4. Reload systemd
-    log_info "=========== Reload systemd user daemon...\n\n"
+    log_info "=========== Reload systemd user daemon...\n"
 
     if systemd_reload; then
         log_info "Systemd reloaded successfully."
