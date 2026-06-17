@@ -3,7 +3,8 @@ Description=Copy yuzu saves to backup folders
 
 [Service]
 Type=simple
-ExecStart=sh -c 'rsync -avzhm path-to-saves-location /home/deck/Documents/yuzu_backup/'
+EnvironmentFile=%h/.steamdeck_helpers/env/yuzu-backup.env
+ExecStart=sh -c 'rsync -avzhm ${source_folder} ${destination_folder}'
 
 [Install]
 WantedBy=default.target

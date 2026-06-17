@@ -3,7 +3,8 @@ Description=Copy roms to emu deck folder as is
 
 [Service]
 Type=oneshot
-ExecStart=sh -c 'cd /home/deck/Documents/git/steamdeck-helpers/copir-py && python main.py -d asis copy'
+EnvironmentFile=%h/.steamdeck_helpers/env/emudeck-copy-roms.env
+ExecStart=sh -c 'cd ${cwd} && python ${main} ${args}'
 
 [Install]
 WantedBy=default.target
