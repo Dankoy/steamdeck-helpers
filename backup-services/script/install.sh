@@ -65,7 +65,7 @@ create_backup() {
     
     log_info "Creating backup of ${#files_to_backup[@]} file(s) to '$backup_file'..."
     
-    # Проверяем, существуют ли файлы для бэкапа
+    # Check if there are files eligeble for backup
     local existing_files=()
     for file in "${files_to_backup[@]}"; do
         if [[ -f "${dest}${file}" ]]; then
@@ -78,7 +78,7 @@ create_backup() {
         return 0
     fi
     
-    # Создаём бэкап только указанных файлов
+    # Create backup with selected files excluding old backups
     if tar -czf "$backup_file" -C "$dest" --exclude='*.tar.gz' "${existing_files[@]}" 2>/dev/null; then
         log_info "Backup created successfully: $(basename "$backup_file") (${#existing_files[@]} files)"
         return 0
@@ -99,7 +99,7 @@ cleanup_old_backups() {
         return 0
     fi
     
-    # Находим все бэкапы для данного типа в целевой директории
+    # Find all backups in folder
     local backup_files
     backup_files=$(find "$dest" -maxdepth 1 -name "${backup_pattern}_backup_*.tar.gz" -type f | sort)
     
@@ -108,18 +108,18 @@ cleanup_old_backups() {
         return 0
     fi
     
-    # Подсчитываем количество файлов
+    # Count backup files
     local total_count
     total_count=$(echo "$backup_files" | wc -l)
     
     log_info "Found $total_count backup(s) for '$backup_pattern'."
     
-    # Если количество файлов превышает лимит, удаляем самые старые
+    # If count is more than limit then delete oldest
     if [[ $total_count -gt $BACKUP_RETENTION_COUNT ]]; then
         local files_to_delete=$((total_count - BACKUP_RETENTION_COUNT))
         log_warn "Keeping last $BACKUP_RETENTION_COUNT backups. Removing $files_to_delete old backup(s)..."
         
-        # Удаляем первые N файлов (самые старые)
+        # Delete first N files (oldest)
         echo "$backup_files" | head -n "$files_to_delete" | while read -r file; do
             if rm -f "$file"; then
                 log_info "Removed old backup: $(basename "$file")"
@@ -141,7 +141,7 @@ cleanup_old_backups() {
 copy_files() {
     local src="$1"
     local dest="$2"
-    local -n files_array="$3"  # Ссылка на массив
+    local -n files_array="$3"  # Link on array
     
     # Check source folder
     if ! check_folder_exists "$src"; then
@@ -160,7 +160,7 @@ copy_files() {
         return 1
     fi
     
-    # Проверяем, есть ли файлы для копирования
+    # Check files existence eligable for copy
     local files_to_copy=()
     for file in "${files_array[@]}"; do
         if [[ -f "${src}${file}" ]]; then
@@ -175,7 +175,7 @@ copy_files() {
         return 0
     fi
     
-    # Копируем только указанные файлы
+    # Copy files from array
     log_info "Copying ${#files_to_copy[@]} file(s) from '$src' to '$dest'..."
     
     local copy_success=true
@@ -235,10 +235,10 @@ check_files_exist_in_dest() {
     
     if ! check_folder_exists "$dest"; then
         log_info "Directory '$dest' doesn't exist. Considered as empty."
-        return 1 # Нет файлов
+        return 1 # No files
     fi
     
-    # Проверяем, есть ли указанные файлы в целевой директории
+    # Check existane of files from array in destination folder
     local found_files=()
     for file in "${files_to_check[@]}"; do
         if [[ -f "${dest}${file}" ]]; then
@@ -248,10 +248,10 @@ check_files_exist_in_dest() {
     
     if [[ ${#found_files[@]} -gt 0 ]]; then
         log_info "Directory '$dest' has ${#found_files[@]} file(s) to backup."
-        return 0 # Есть файлы
+        return 0 # Files exist
     else
         log_info "Directory '$dest' has none of the specified files."
-        return 1 # Нет файлов
+        return 1 # Files don't exist
     fi
 }
 
@@ -265,7 +265,7 @@ get_files_from_source() {
         return 1
     fi
     
-    # Получаем список файлов (только файлы, не директории)
+    # Get files from directory (no folders)
     result_array=()
     while IFS= read -r file; do
         if [[ -f "${src}${file}" ]]; then
@@ -325,26 +325,26 @@ upsert() {
     log_info "Upsert operation for '$src' -> '$dest'"
     log_info "Managing ${#files_to_manage[@]} file(s): ${files_to_manage[*]}"
     
-    # Проверяем, есть ли файлы для управления
+    # Check if there are files to upsert from source
     if [[ ${#files_to_manage[@]} -eq 0 ]]; then
         log_error "No files specified for upsert!"
         return 1
     fi
     
-    # Проверяем, есть ли указанные файлы в целевой директории
+    # CHeck if files from source already exist in destination folder
     if check_files_exist_in_dest "$dest" "${files_to_manage[@]}"; then
         log_warn "Destination directory '$dest' has files that need backup..."
         
-        # Создаём бэкап только существующих файлов
+        # Create backup for files in array
         if ! create_backup "$dest" "$backup_name" "${files_to_manage[@]}"; then
             log_error "Backup failed! Aborting update to prevent data loss."
             return 1
         fi
         
-        # Очищаем старые бэкапы
+        # Clean backup
         cleanup_old_backups "$dest" "$backup_name"
         
-        # Копируем файлы
+        # Copy files
         copy_files "$src" "$dest" files_to_manage
     else
         log_info "Directory '$dest' has no files to backup. Initial install."
@@ -376,7 +376,7 @@ main() {
     # 2. Prepare and process environment files
     log_info "=========== Step 1: Processing environment files...\n"
     
-    # Получаем список файлов из исходной директории
+    # Get list of files from source
     local env_files=()
     if get_files_from_source "$ENV_SRC_FOLDER" env_files; then
         if prepare_directory "$ENV_SRC_FOLDER" "$ENV_DEST_FOLDER" "environment files"; then
@@ -393,7 +393,7 @@ main() {
     # 3. Prepare and process service files
     log_info "=========== Step 2: Processing service files...\n"
     
-    # Получаем список файлов из исходной директории
+    # Get list of files from source
     local service_files=()
     if get_files_from_source "$SERVICES_SRC_FOLDER" service_files; then
         if prepare_directory "$SERVICES_SRC_FOLDER" "$SERVICES_DEST_FOLDER" "service files"; then
