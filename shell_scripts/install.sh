@@ -26,7 +26,7 @@ USER=$(whoami)
 log_info "Запуск от пользователя: $USER"
 
 ENV_SRC_FOLDER="../backup-services/service/"
-SERVICES_SRC_FOLDER="../backup-services/service/service/"
+SERVICES_SRC_FOLDER="../backup-services/service/"
 
 ENV_DEST_FOLDER="$HOME/.steamdeck_helpers/env/"
 SERVICES_DEST_FOLDER="$HOME/.config/systemd/user/"
