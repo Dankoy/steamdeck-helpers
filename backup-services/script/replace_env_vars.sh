@@ -27,40 +27,63 @@ set -euo pipefail  # Fail on error
 USER=$(whoami)
 log_info "Запуск от пользователя: $USER"
 
-ENV_DEST_FOLDER="$HOME/.steamdeck_helpers/env/"
+# ---------- LOAD CONFIGURATION ----------
+load_config() {
+    local config_file="${1:-config.env}"
+    
+    if [[ ! -f "$config_file" ]]; then
+        log_error "Configuration file '$config_file' not found!"
+        log_error "Please create it or specify path: $0 <config_file>"
+        exit 1
+    fi
+    
+    log_info "Loading configuration from '$config_file'..."
+    
+    # shellcheck source=/dev/null
+    if source "$config_file"; then
+        log_info "✅ Configuration loaded successfully!"
+        return 0
+    else
+        log_error "❌ Failed to load configuration!"
+        exit 1
+    fi
+}
 
-EMUDECK_COPY_ROMS_FILE_NAME="emudeck-copy-roms.env"
-EDEN_BACKUP_FILE_NAME="eden-backup.env"
-RETROARCH_BACKUP_FILE_NAME="retroarch-backup.env"
-RYUJINX_BACKUP_FILE_NAME="ryujinx-backup.env"
-YUZU_BACKUP_FILE_NAME="yuzu-backup.env"
+# ---------- VALIDATE CONFIGURATION ----------
+validate_config() {
+    local required_vars=(
+        "ENV_DEST_FOLDER"
+        "EMUDECK_COPY_ROMS_FILE_NAME"
+        "EDEN_BACKUP_FILE_NAME"
+        "RETROARCH_BACKUP_FILE_NAME"
+        "RYUJINX_BACKUP_FILE_NAME"
+        "YUZU_BACKUP_FILE_NAME"
+        "EMUDECK_COPY_ROMS_CWD"
+        "EMUDECK_COPY_ROMS_MAIN"
+        "EMUDECK_COPY_ROMS_ARGS"
+        "BSF"
+        "BDF"
+    )
+    
+    local missing_vars=()
+    
+    for var in "${required_vars[@]}"; do
+        if [[ -z "${!var:-}" ]]; then
+            missing_vars+=("$var")
+        fi
+    done
+    
+    if [[ ${#missing_vars[@]} -gt 0 ]]; then
+        log_error "Missing required variables in config:"
+        for var in "${missing_vars[@]}"; do
+            log_error "  - $var"
+        done
+        exit 1
+    fi
+    
+    log_info "✅ Configuration validation passed!"
+}
 
-# ------ VARS TO REPLACE --------
-
-EMUDECK_COPY_ROMS_CWD="_CWD_"
-EMUDECK_COPY_ROMS_MAIN="_MAIN_"
-EMUDECK_COPY_ROMS_ARGS="_ARGS_"
-
-BSF="_SOURCE_FOLDER_"
-BDF="_DESTINATION_FOLDER_"
-
-# ------ DEFAULT VARS FOR SED ------------
-
-EMUDECK_COPY_ROMS_cwd="/home/deck/Documents/git/steamdeck-helpers/copir-py"
-EMUDECK_COPY_ROMS_main="main.py"
-EMUDECK_COPY_ROMS_args="-d asis symlink"
-
-EDEN_BACKUP_source_folder="/home/deck/.var/app/org.libretro.RetroArch/config/retroarch/"
-EDEN_BACKUP_destination_folder="/home/deck/Documents/eden_backup/"
-
-RETROARCH_BACKUP_source_folder="/home/deck/.var/app/org.libretro.RetroArch/config/retroarch/"
-RETROARCH_BACKUP_destination_folder="/home/deck/Documents/retroarch_backup/"
-
-RYUJINX_BACKUP_source_folder="/run/media/deck/0f782a07-7903-4d80-9796-2356c3659f5e/Emulation/saves/ryujinx/"
-RYUJINX_BACKUP_destination_folder="/home/deck/Documents/backups/ryujinx_backup/"
-
-YUZU_BACKUP_source_folder="/home/deck/.var/app/org.libretro.RetroArch/config/retroarch/"
-YUZU_BACKUP_destination_folder="/home/deck/Documents/yuzu_backup/"
 
 # ---------- CHECK FOLDERS ----------
 check_folder_exists() {
@@ -133,6 +156,14 @@ main() {
 
     local has_errors=false
     
+    # Load config
+    local config_file="${1:-config.env}"
+    load_config "$config_file"
+    
+    # Validate config
+    validate_config
+
+
     # emudeck copy roms
     log_info "Processing emudeck copy roms..."
     if check_file_exist_in_folder "$ENV_DEST_FOLDER" "$EMUDECK_COPY_ROMS_FILE_NAME"; then
