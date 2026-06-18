@@ -131,7 +131,7 @@ upsert() {
         fi
         
         # Clean backup
-        cleanup_old_backups "$dest" "$backup_name"
+        cleanup_old_backups "$dest" "$backup_name" "$BACKUP_RETENTION_COUNT"
         
         # Copy files
         copy_files "$src" "$dest" files_to_manage
