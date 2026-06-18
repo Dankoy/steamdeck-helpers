@@ -25,8 +25,8 @@ set -euo pipefail  # Fail on error
 USER=$(whoami)
 log_info "Запуск от пользователя: $USER"
 
-ENV_SRC_FOLDER="../env/"
-SERVICES_SRC_FOLDER="../service/"
+ENV_SRC_FOLDER="../backup-services/service/"
+SERVICES_SRC_FOLDER="../backup-services/service/service/"
 
 ENV_DEST_FOLDER="$HOME/.steamdeck_helpers/env/"
 SERVICES_DEST_FOLDER="$HOME/.config/systemd/user/"
