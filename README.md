@@ -2,6 +2,14 @@
 
 Contains projects for different purposes to automate some tedious tasks
 
+## Usage
+
+1) git pull repo
+2) Go to scripts folder in repo `cd ~/git/steamdeck-helpers/shell_scripts`
+3) Run install script `./install.sh`. This script add env files for systemd services, and add user managed systemd services and timers.
+4) Change source and destination directories in `config.env` file for your own directories. Default are steamdeck folders.
+5) Run replace script `./replace_env_vars.sh`. This script will change placeholders in env files for systemd services to your desired values.
+
 # copir [link](copir)
 
 Copy files from one directory, which contains multiple nested directories to one flat folder.    
@@ -25,3 +33,7 @@ Contains linux services to run scripts and timer necessary for:
 2) Backup yuzu saves
 3) Copy roms from custom folders to flat folder used by [EmuDeck](https://www.emudeck.com/) using
    [copir-py](copir-py) project
+
+# shell_scripts [link](shell_scripts)
+
+Contains scripts to easily populate necessary files for backup services and also service for copir-py.
