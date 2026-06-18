@@ -44,12 +44,19 @@ Install script was made to simplify installation process for all files.
 3) Creates backups for old files if necessary
 4) Reloads systemd daemon.
 
+## replace_env_vars script
+
+This script replaces placeholders in .env files in `~/.steamdeck-helpers/env/` for your values.
+
+Values are read from `config.env` file. So change it there after comment `# ---------- YOUR VARIABLES TO REPLACE TO ----------`
+
 # Usage
 
 1) git pull repo
 2) Go to scripts folder in repo `cd ~/git/steamdeck-helpers/backup-services/scripts`
-3) Run install script `./install.sh`
-4) Change source and destination directories in env files for your own directories. Default are steamdeck folders.
+3) Run install script `./install.sh`. This script add env files for systemd services, and add user managed systemd services and timers.
+4) Change source and destination directories in `config.env` file for your own directories. Default are steamdeck folders.
+5) Run replace script `./replace_env_vars.sh`. This script will change placeholders in env files for systemd services to your desired values.
 
 ## Using copir
 
