@@ -35,29 +35,6 @@ The following command copy files which exist in include statements:
 Also, it is necessary to create timer for backup service
 `~/.config/systemd/user/some-service-name.*`
 
-## Install script
-
-Install script was made to simplify installation process for all files. 
-
-1) It copies services and timers into `~/.config/system/user/`
-2) Copies environment files into `~/.steamdeck-helpers/env/`
-3) Creates backups for old files if necessary
-4) Reloads systemd daemon.
-
-## replace_env_vars script
-
-This script replaces placeholders in .env files in `~/.steamdeck-helpers/env/` for your values.
-
-Values are read from `config.env` file. So change it there after comment `# ---------- YOUR VARIABLES TO REPLACE TO ----------`
-
-# Usage
-
-1) git pull repo
-2) Go to scripts folder in repo `cd ~/git/steamdeck-helpers/backup-services/scripts`
-3) Run install script `./install.sh`. This script add env files for systemd services, and add user managed systemd services and timers.
-4) Change source and destination directories in `config.env` file for your own directories. Default are steamdeck folders.
-5) Run replace script `./replace_env_vars.sh`. This script will change placeholders in env files for systemd services to your desired values.
-
 ## Using copir
 
 Install script also copies copir service so it can be started with systemd. 
