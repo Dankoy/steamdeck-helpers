@@ -33,8 +33,8 @@ check_folder_exists() {
     local dir="$1"
     
     # Check empty
-    if is_empty "$file"; then
-        log_error "check_folder_exists: directory path is empty '$file'!"
+    if is_empty "$dir"; then
+        log_error "check_folder_exists: directory path is empty '$dir'!"
         return 1
     fi
     
