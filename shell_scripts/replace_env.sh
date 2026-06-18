@@ -1,56 +1,41 @@
 #!/bin/bash
-
-# ---------- COLORS ----------
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
-# ---------- LOGs ----------
-log_info() {
-    echo -e "${GREEN}[INFO]${NC} $*"
-}
-
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $*"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $*" >&2
-}
-
-
-# ----------- VARIABLES -----------------
+# ============================================
+# Replace placeholders in .env files
+# ============================================
 
 set -euo pipefail  # Fail on error
+
+# Library path
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="${SCRIPT_DIR}/lib"
+
+# Load libs
+# shellcheck source=/dev/null
+source "${LIB_DIR}/utils.sh"
+# shellcheck source=/dev/null
+source "${LIB_DIR}/file_ops.sh"
+# shellcheck source=/dev/null
+source "${LIB_DIR}/backup.sh"
+
 
 USER=$(whoami)
 log_info "Запуск от пользователя: $USER"
 
-# ---------- LOAD CONFIGURATION ----------
-load_config() {
-    local config_file="${1:-config.env}"
-    
-    if [[ ! -f "$config_file" ]]; then
-        log_error "Configuration file '$config_file' not found!"
-        log_error "Please create it or specify path: $0 <config_file>"
-        exit 1
-    fi
-    
-    log_info "Loading configuration from '$config_file'..."
-    
-    # shellcheck source=/dev/null
-    if source "$config_file"; then
-        log_info "✅ Configuration loaded successfully!"
-        return 0
-    else
-        log_error "❌ Failed to load configuration!"
-        exit 1
-    fi
-}
 
-# ---------- VALIDATE CONFIGURATION ----------
-validate_config() {
+# ----------- MAIN ----------
+main() {
+
+    log_info "=== REPLACE ENV START ==="
+
+    local has_errors=false
+    
+    # Load config
+    local config_file="${1:-config.env}"
+    if ! load_config "$config_file"; then
+        exit 1
+    fi
+    
+    # Проверяем обязательные переменные
     local required_vars=(
         "ENV_DEST_FOLDER"
         "EMUDECK_COPY_ROMS_FILE_NAME"
@@ -65,103 +50,9 @@ validate_config() {
         "BDF"
     )
     
-    local missing_vars=()
-    
-    for var in "${required_vars[@]}"; do
-        if [[ -z "${!var:-}" ]]; then
-            missing_vars+=("$var")
-        fi
-    done
-    
-    if [[ ${#missing_vars[@]} -gt 0 ]]; then
-        log_error "Missing required variables in config:"
-        for var in "${missing_vars[@]}"; do
-            log_error "  - $var"
-        done
+    if ! validate_required_vars "${required_vars[@]}"; then
         exit 1
     fi
-    
-    log_info "✅ Configuration validation passed!"
-}
-
-
-# ---------- CHECK FOLDERS ----------
-check_folder_exists() {
-    local dir="$1"
-
-    if [[ ! -d "$dir" ]]; then
-        log_warn "Directory '$dir' doesn't exist!"
-        return 1
-    fi
-    
-    return 0
-}
-
-# -------- CHECK IF DIRECTORY HAS SPECIFIC FILES ---------
-check_file_exist_in_folder() {
-
-    local dest="$1"
-    local file_name="$2"
-    local full_path="${dest}${file_name}"
-    
-    if ! check_folder_exists "$dest"; then
-        log_info "Directory '$dest' doesn't exist. Considered as empty."
-        return 1 # No files
-    fi
-    
-    if [ ! -f "${full_path}" ]; then
-        log_error "File '${full_path}' not found!"
-        return 1
-    else 
-        log_info "File '${full_path}' found!"
-        return 0
-    fi
-
-}
-
-# ----------- REPLACE FUNCTION --------------
-replace_in_file() {
-
-    local dest="$1"
-    local file_name="$2"
-    local from="$3"
-    local to="$4"
-    local full_path="${dest}${file_name}"
-
-    # Check empty from and to
-    if [[ -z "$from" ]] || [[ -z "$to" ]]; then
-        log_error "Empty replacement pattern in '$file_name'!"
-        return 1
-    fi
-
-    local escaped_from
-    local escaped_to
-    escaped_from=$(echo "$from" | sed 's/[\/&]/\\&/g')
-    escaped_to=$(echo "$to" | sed 's/[\/&]/\\&/g')
-
-    if sed -i "s/${escaped_from}/${escaped_to}/g" "$full_path" 2> /dev/null; then
-        log_info "Replacement successful in '$file_name': '$from' -> '$to'"
-        return 0
-    else
-        log_error "Failed to replace in '$file_name'"
-        return 1
-    fi
-
-}
-
-
-
-# ----------- MAIN ----------
-main() {
-
-    local has_errors=false
-    
-    # Load config
-    local config_file="${1:-config.env}"
-    load_config "$config_file"
-    
-    # Validate config
-    validate_config
 
 
     # emudeck copy roms
@@ -225,4 +116,5 @@ main() {
 }
 
 
-main
+# ---------- RUN ----------
+main "$@"
