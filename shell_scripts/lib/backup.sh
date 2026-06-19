@@ -20,7 +20,7 @@ create_backup() {
     fi
     
     local timestamp
-    timestamp=$(date +%Y%m%d_%H%M%S)
+    timestamp=$(date +%Y-%m-%d_%H-%M-%S)
     local backup_file="${dest}${backup_name}_backup_${timestamp}.tar.gz"
     
     log_info "Creating backup of ${#files_to_backup[@]} file(s) to '$backup_file'..."
@@ -51,49 +51,45 @@ create_backup() {
 cleanup_old_backups() {
     local dest="$1"
     local backup_pattern="$2"
-    local retention_count="${3:-5}"
+    local retention_days="${3:-14}"  # Default 14 days (2 weeks)
     
-    log_info "Cleaning up old backups in '$dest' (keeping last $retention_count)..."
+    log_info "Cleaning up old backups in '$dest' (remove older than $retention_days) days..."
     
     if ! check_folder_exists "$dest"; then
         log_info "Directory '$dest' doesn't exist. Nothing to clean."
         return 0
     fi
     
-    # Находим все бэкапы для данного типа в целевой директории
+    # Find all backups
     local backup_files
-    backup_files=$(find "$dest" -maxdepth 1 -name "${backup_pattern}_backup_*.tar.gz" -type f | sort)
+    backup_files=$(find "$dest" -maxdepth 1 -name "${backup_pattern}_backup_*.tar.gz" -type f)
     
     if [[ -z "$backup_files" ]]; then
         log_info "No backups found for pattern '$backup_pattern' in '$dest'."
         return 0
     fi
     
-    # Подсчитываем количество файлов
+    # Count total backups
     local total_count
     total_count=$(echo "$backup_files" | wc -l)
     
     log_info "Found $total_count backup(s) for '$backup_pattern'."
     
-    # Если количество файлов превышает лимит, удаляем самые старые
-    if [[ $total_count -gt $retention_count ]]; then
-        local files_to_delete=$((total_count - retention_count))
-        log_warn "Keeping last $retention_count backups. Removing $files_to_delete old backup(s)..."
-        
-        # Удаляем первые N файлов (самые старые)
-        echo "$backup_files" | head -n "$files_to_delete" | while read -r file; do
-            if rm -f "$file"; then
-                log_info "Removed old backup: $(basename "$file")"
-            else
-                log_warn "Failed to remove: $(basename "$file")"
-            fi
-        done
-        
-        log_info "Cleanup completed for '$backup_pattern' in '$dest'."
+    # Find and remove backups older than retention_days
+    local deleted_count
+    deleted_count=$(find "$dest" -maxdepth 1 -name "${backup_pattern}_backup_*.tar.gz" -type f -mtime "+$retention_days" -delete -print 2>/dev/null | wc -l)
+
+    if [[ $deleted_count -eq 0 ]]; then
+        log_info "No backups older than $retention_days days found. All $total_count backups are fresh."
     else
-        log_info "No cleanup needed. Current count ($total_count) is within limit ($retention_count)."
+        log_info "Removed $deleted_count backup(s) older than $retention_days days."
+        
+        # Show remaining
+        local remaining_count
+        remaining_count=$(find "$dest" -maxdepth 1 -name "${backup_pattern}_backup_*.tar.gz" -type f 2>/dev/null | wc -l)
+        log_info "Remaining: $remaining_count backup(s)"
     fi
-    
+        
     return 0
 }
 
