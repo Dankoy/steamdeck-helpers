@@ -470,7 +470,20 @@ is_not_empty() {
     [[ -n "$1" ]]
 }
 
+# ============================================
+# Function: print_string
+# ============================================
+# Prints a string to stdout. Handles missing arguments gracefully.
+#
+# @param {string} text - The text to print (optional, defaults to empty)
+#
+# @returns {number} 0 - success, 1 - error
+#
+# @example
+#   print_string "Hello World"  # Output: Hello World
+#   print_string                # Output: (empty line)
+# ============================================
 print_string() {
-    local text="$1"
+    local text="${1:-}" # Default to empty string if no argument
     echo "$text"
 }
