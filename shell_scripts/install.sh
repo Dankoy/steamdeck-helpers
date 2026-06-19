@@ -46,18 +46,18 @@ Usage: $0 [OPTIONS]
 Install script for SteamDeck helpers.
 
 OPTIONS:
-    -h, --help              Show this help message
-    -v, --verbose           Enable verbose output
-    -f, --force             Force installation (skip confirmations)
-    -s, --skip-systemd      Skip systemd daemon reload
-    -n, --no-backup         Skip backup creation
-    -y, --dry-run           Print commands without executing them (dry run)
-    -e, --env-dir DIR       Environment source directory (default: $ENV_SRC_FOLDER)
-    -S, --service-dir DIR   Service source directory (default: $SERVICES_SRC_FOLDER)
-    -d, --dest-dir DIR      Environment destination directory (default: $ENV_DEST_FOLDER)
-    -D, --service-dest DIR  Service destination directory (default: $SERVICES_DEST_FOLDER)
-    -b, --backup-dir DIR    Backup directory (default: $BACKUP_FOLDER)
-    -r, --retention DAYS    Backup retention in days (default: 14)
+    -h         Show this help message
+    -v         Enable verbose output
+    -f         Force installation (skip confirmations)
+    -s         Skip systemd daemon reload
+    -n         Skip backup creation
+    -y         Print commands without executing them (dry run)
+    -e DIR     Environment source directory (default: $ENV_SRC_FOLDER)
+    -S DIR     Service source directory (default: $SERVICES_SRC_FOLDER)
+    -d DIR     Environment destination directory (default: $ENV_DEST_FOLDER)
+    -D DIR     Service destination directory (default: $SERVICES_DEST_FOLDER)
+    -b DIR     Backup directory (default: $BACKUP_FOLDER)
+    -r DAYS    Backup retention in days (default: 14)
 
 EXAMPLES:
     $0                      Install with default settings
