@@ -25,6 +25,7 @@ ENV_DEST_FOLDER="$HOME/.steamdeck_helpers/env/"
 CONFIG_FILE="config.env"
 VERBOSE=false
 FORCE=false
+DRY_RUN=false
 
 # ---------- HELP FUNCTION ----------
 show_usage() {
@@ -37,6 +38,7 @@ OPTIONS:
     -h, --help              Show this help message
     -v, --verbose           Enable verbose output
     -f, --force             Force operation (skip confirmations)
+    -y, --dry-run           Print commands without executing them (dry run)
     -d, --dest-dir DIR      Environment destination directory (default: $ENV_DEST_FOLDER)
     -c, --config FILE       Configuration file (default: config.env)
 
@@ -47,6 +49,8 @@ EXAMPLES:
     $0                      Use config.env with default settings
     $0 my-config.env        Use my-config.env as configuration
     $0 -v -f                Verbose mode, force operation
+    $0 -y                   Show what would be done (dry run)
+    $0 -y -v                Dry run with verbose output
     $0 -d /custom/path/     Use custom destination directory
     $0 -c my-config.env -v  Use custom config with verbose output
     $0 --help               Show this help
@@ -57,7 +61,7 @@ EOF
 
 # ---------- PARSE OPTIONS ----------
 parse_replace_options() {
-    local optstring="hvfd:c:"
+    local optstring="hvfy d:c:"
     
     # Call the library function to parse options
     parse_options "$optstring" "show_usage" "$@"
@@ -70,6 +74,10 @@ parse_replace_options() {
     
     if is_option_set "f"; then
         FORCE=true
+    fi
+    
+    if is_option_set "y"; then
+        DRY_RUN=true
     fi
     
     if is_option_set "d"; then
@@ -104,6 +112,10 @@ parse_replace_options() {
         log_info "Force mode enabled"
     fi
     
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_info "DRY RUN MODE: Commands will be printed but NOT executed"
+    fi
+    
     log_debug "Config file: $CONFIG_FILE"
     log_debug "Destination directory: $ENV_DEST_FOLDER"
 }
@@ -121,7 +133,19 @@ confirm_operation() {
     echo "Destination dir:     $ENV_DEST_FOLDER"
     echo "Verbose mode:        $VERBOSE"
     echo "Force mode:          $FORCE"
+    echo "Dry run mode:        $DRY_RUN"
     echo ""
+    
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_warn "DRY RUN MODE: No changes will be made to the system."
+        read -p "Show dry run commands? [y/N] " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Dry run cancelled."
+            exit 0
+        fi
+        return 0
+    fi
     
     read -p "Proceed with replacement? [y/N] " -n 1 -r
     echo
@@ -140,6 +164,11 @@ main() {
     
     USER=$(whoami)
     log_debug "Running as user: $USER"
+    
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_warn "DRY RUN MODE ACTIVATED - No changes will be made"
+        echo ""
+    fi
     
     # Show configuration and confirm
     confirm_operation
@@ -203,9 +232,17 @@ main() {
     log_info "Processing emudeck copy roms..."
     if check_file_exist_in_folder "$ENV_DEST_FOLDER" "$EMUDECK_COPY_ROMS_FILE_NAME"; then
         log_debug "Processing replacements in $EMUDECK_COPY_ROMS_FILE_NAME"
-        replace_in_file "$ENV_DEST_FOLDER" "$EMUDECK_COPY_ROMS_FILE_NAME" "$EMUDECK_COPY_ROMS_CWD" "$EMUDECK_COPY_ROMS_cwd" || has_errors=true
-        replace_in_file "$ENV_DEST_FOLDER" "$EMUDECK_COPY_ROMS_FILE_NAME" "$EMUDECK_COPY_ROMS_MAIN" "$EMUDECK_COPY_ROMS_main" || has_errors=true
-        replace_in_file "$ENV_DEST_FOLDER" "$EMUDECK_COPY_ROMS_FILE_NAME" "$EMUDECK_COPY_ROMS_ARGS" "$EMUDECK_COPY_ROMS_args" || has_errors=true
+        
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "  [DRY RUN] Would replace in: $EMUDECK_COPY_ROMS_FILE_NAME"
+            echo "    $EMUDECK_COPY_ROMS_CWD -> $EMUDECK_COPY_ROMS_cwd"
+            echo "    $EMUDECK_COPY_ROMS_MAIN -> $EMUDECK_COPY_ROMS_main"
+            echo "    $EMUDECK_COPY_ROMS_ARGS -> $EMUDECK_COPY_ROMS_args"
+        else
+            replace_in_file "$ENV_DEST_FOLDER" "$EMUDECK_COPY_ROMS_FILE_NAME" "$EMUDECK_COPY_ROMS_CWD" "$EMUDECK_COPY_ROMS_cwd" || has_errors=true
+            replace_in_file "$ENV_DEST_FOLDER" "$EMUDECK_COPY_ROMS_FILE_NAME" "$EMUDECK_COPY_ROMS_MAIN" "$EMUDECK_COPY_ROMS_main" || has_errors=true
+            replace_in_file "$ENV_DEST_FOLDER" "$EMUDECK_COPY_ROMS_FILE_NAME" "$EMUDECK_COPY_ROMS_ARGS" "$EMUDECK_COPY_ROMS_args" || has_errors=true
+        fi
     else
         log_error "File '$EMUDECK_COPY_ROMS_FILE_NAME' was not processed!"
         has_errors=true
@@ -215,8 +252,15 @@ main() {
     log_info "Processing eden backup..."
     if check_file_exist_in_folder "$ENV_DEST_FOLDER" "$EDEN_BACKUP_FILE_NAME"; then
         log_debug "Processing replacements in $EDEN_BACKUP_FILE_NAME"
-        replace_in_file "$ENV_DEST_FOLDER" "$EDEN_BACKUP_FILE_NAME" "$BSF" "$EDEN_BACKUP_source_folder" || has_errors=true
-        replace_in_file "$ENV_DEST_FOLDER" "$EDEN_BACKUP_FILE_NAME" "$BDF" "$EDEN_BACKUP_destination_folder" || has_errors=true
+        
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "  [DRY RUN] Would replace in: $EDEN_BACKUP_FILE_NAME"
+            echo "    $BSF -> $EDEN_BACKUP_source_folder"
+            echo "    $BDF -> $EDEN_BACKUP_destination_folder"
+        else
+            replace_in_file "$ENV_DEST_FOLDER" "$EDEN_BACKUP_FILE_NAME" "$BSF" "$EDEN_BACKUP_source_folder" || has_errors=true
+            replace_in_file "$ENV_DEST_FOLDER" "$EDEN_BACKUP_FILE_NAME" "$BDF" "$EDEN_BACKUP_destination_folder" || has_errors=true
+        fi
     else
         log_error "File '$EDEN_BACKUP_FILE_NAME' was not processed!"
         has_errors=true
@@ -226,8 +270,15 @@ main() {
     log_info "Processing retroarch backup..."
     if check_file_exist_in_folder "$ENV_DEST_FOLDER" "$RETROARCH_BACKUP_FILE_NAME"; then
         log_debug "Processing replacements in $RETROARCH_BACKUP_FILE_NAME"
-        replace_in_file "$ENV_DEST_FOLDER" "$RETROARCH_BACKUP_FILE_NAME" "$BSF" "$RETROARCH_BACKUP_source_folder" || has_errors=true
-        replace_in_file "$ENV_DEST_FOLDER" "$RETROARCH_BACKUP_FILE_NAME" "$BDF" "$RETROARCH_BACKUP_destination_folder" || has_errors=true
+        
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "  [DRY RUN] Would replace in: $RETROARCH_BACKUP_FILE_NAME"
+            echo "    $BSF -> $RETROARCH_BACKUP_source_folder"
+            echo "    $BDF -> $RETROARCH_BACKUP_destination_folder"
+        else
+            replace_in_file "$ENV_DEST_FOLDER" "$RETROARCH_BACKUP_FILE_NAME" "$BSF" "$RETROARCH_BACKUP_source_folder" || has_errors=true
+            replace_in_file "$ENV_DEST_FOLDER" "$RETROARCH_BACKUP_FILE_NAME" "$BDF" "$RETROARCH_BACKUP_destination_folder" || has_errors=true
+        fi
     else
         log_error "File '$RETROARCH_BACKUP_FILE_NAME' was not processed!"
         has_errors=true
@@ -237,8 +288,15 @@ main() {
     log_info "Processing ryujinx backup..."
     if check_file_exist_in_folder "$ENV_DEST_FOLDER" "$RYUJINX_BACKUP_FILE_NAME"; then
         log_debug "Processing replacements in $RYUJINX_BACKUP_FILE_NAME"
-        replace_in_file "$ENV_DEST_FOLDER" "$RYUJINX_BACKUP_FILE_NAME" "$BSF" "$RYUJINX_BACKUP_source_folder" || has_errors=true
-        replace_in_file "$ENV_DEST_FOLDER" "$RYUJINX_BACKUP_FILE_NAME" "$BDF" "$RYUJINX_BACKUP_destination_folder" || has_errors=true
+        
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "  [DRY RUN] Would replace in: $RYUJINX_BACKUP_FILE_NAME"
+            echo "    $BSF -> $RYUJINX_BACKUP_source_folder"
+            echo "    $BDF -> $RYUJINX_BACKUP_destination_folder"
+        else
+            replace_in_file "$ENV_DEST_FOLDER" "$RYUJINX_BACKUP_FILE_NAME" "$BSF" "$RYUJINX_BACKUP_source_folder" || has_errors=true
+            replace_in_file "$ENV_DEST_FOLDER" "$RYUJINX_BACKUP_FILE_NAME" "$BDF" "$RYUJINX_BACKUP_destination_folder" || has_errors=true
+        fi
     else
         log_error "File '$RYUJINX_BACKUP_FILE_NAME' was not processed!"
         has_errors=true
@@ -248,8 +306,15 @@ main() {
     log_info "Processing yuzu backup..."
     if check_file_exist_in_folder "$ENV_DEST_FOLDER" "$YUZU_BACKUP_FILE_NAME"; then
         log_debug "Processing replacements in $YUZU_BACKUP_FILE_NAME"
-        replace_in_file "$ENV_DEST_FOLDER" "$YUZU_BACKUP_FILE_NAME" "$BSF" "$YUZU_BACKUP_source_folder" || has_errors=true
-        replace_in_file "$ENV_DEST_FOLDER" "$YUZU_BACKUP_FILE_NAME" "$BDF" "$YUZU_BACKUP_destination_folder" || has_errors=true
+        
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "  [DRY RUN] Would replace in: $YUZU_BACKUP_FILE_NAME"
+            echo "    $BSF -> $YUZU_BACKUP_source_folder"
+            echo "    $BDF -> $YUZU_BACKUP_destination_folder"
+        else
+            replace_in_file "$ENV_DEST_FOLDER" "$YUZU_BACKUP_FILE_NAME" "$BSF" "$YUZU_BACKUP_source_folder" || has_errors=true
+            replace_in_file "$ENV_DEST_FOLDER" "$YUZU_BACKUP_FILE_NAME" "$BDF" "$YUZU_BACKUP_destination_folder" || has_errors=true
+        fi
     else
         log_error "File '$YUZU_BACKUP_FILE_NAME' was not processed!"
         has_errors=true
@@ -259,7 +324,12 @@ main() {
         log_error "Operation completed with errors!"
         exit 1
     else
-        log_info "Operation completed successfully!"
+        if [[ "$DRY_RUN" == "true" ]]; then
+            log_warn "DRY RUN COMPLETED - No changes were made to the system"
+            log_info "Remove -y flag to perform actual replacement"
+        else
+            log_info "Operation completed successfully!"
+        fi
         return 0
     fi
 }
