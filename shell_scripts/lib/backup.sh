@@ -3,11 +3,32 @@
 # Library of backup functions
 # ============================================
 
-# Загружаем зависимости
+# Load dependencies
 # shellcheck source=/dev/null
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
-# ---------- BACKUP FUNCTIONS ----------
+# ============================================
+# Function: create_backup
+# ============================================
+# Creates a tar.gz backup archive of specified files from a directory.
+#
+# @param {string} dest          - Target directory containing files to backup
+# @param {string} backup_name   - Prefix for the backup filename (used in archive name)
+# @param {string[]} files       - Array of filenames to backup (passed after backup_name)
+#
+# @returns {number} 0 - success, 1 - error
+#
+# @example
+#   create_backup "/home/user/.config" "app" ".bashrc" ".profile"
+#   # Creates: /home/user/.config/app_backup_2024-01-15_12-30-45.tar.gz
+#
+# @example
+#   local files=(".env" ".env.local")
+#   create_backup "/home/user/project" "env" "${files[@]}"
+#
+# @note Files with .tar.gz extension are automatically excluded from backup
+# @note Only existing files from the provided list are included in the backup
+# ============================================
 create_backup() {
     local dest="$1"
     local backup_name="$2"
@@ -48,6 +69,28 @@ create_backup() {
     fi
 }
 
+# ============================================
+# Function: cleanup_old_backups
+# ============================================
+# Removes backups older than the specified number of days.
+#
+# @param {string} dest           - Directory containing backups
+# @param {string} backup_pattern - Prefix of backup filename (without _backup_*)
+# @param {number} retention_days - Number of days to keep backups (default: 14)
+#
+# @returns {number} 0 - success, 1 - error
+#
+# @example
+#   cleanup_old_backups "/home/user/.config" "app" 30
+#   # Removes backups older than 30 days
+#
+# @example
+#   cleanup_old_backups "/home/user/.config" "app"
+#   # Removes backups older than 14 days (default)
+#
+# @note Uses find with -mtime to determine file age
+# @note Uses find -delete for optimal performance
+# ============================================
 cleanup_old_backups() {
     local dest="$1"
     local backup_pattern="$2"
@@ -93,6 +136,24 @@ cleanup_old_backups() {
     return 0
 }
 
+# ============================================
+# Function: restore_from_backup
+# ============================================
+# Restores files from the specified backup archive to the target directory.
+#
+# @param {string} backup_file - Full path to the backup file (.tar.gz)
+# @param {string} dest        - Directory to restore files to
+#
+# @returns {number} 0 - success, 1 - error
+#
+# @example
+#   restore_from_backup "/home/user/.config/app_backup_2024-01-15_12-30-45.tar.gz" "/home/user/.config"
+#   # Restores files from backup to /home/user/.config
+#
+# @warning Restoration overwrites existing files in the destination directory
+# @warning It's recommended to create a backup of current state before restoring
+# @note Archive extracts preserving directory structure
+# ============================================
 restore_from_backup() {
     local backup_file="$1"
     local dest="$2"
@@ -118,6 +179,27 @@ restore_from_backup() {
     fi
 }
 
+# ============================================
+# Function: list_backups
+# ============================================
+# Lists all backups in the specified directory.
+#
+# @param {string} dest           - Directory to search for backups
+# @param {string} backup_pattern - Prefix of backup filename (optional)
+#
+# @returns {number} 0 - success, 1 - error
+#
+# @example
+#   list_backups "/home/user/.config" "app"
+#   # Lists all app backups in /home/user/.config
+#
+# @example
+#   list_backups "/home/user/.config" ""
+#   # Lists all backups in /home/user/.config
+#
+# @output List of backups in format: full file path
+# @note Sorted from newest to oldest (reverse chronological)
+# ============================================
 list_backups() {
     local dest="$1"
     local backup_pattern="$2"

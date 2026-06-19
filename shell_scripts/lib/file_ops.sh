@@ -1,13 +1,40 @@
 #!/bin/bash
 # ============================================
 # Library for file processing functions
+# Provides file operations: replace, copy, template processing
 # ============================================
 
-# Загружаем зависимости
+# Load dependencies
 # shellcheck source=/dev/null
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
-# ---------- REPLACE FUNCTIONS ----------
+# ============================================
+# REPLACE FUNCTIONS
+# ============================================
+
+# ============================================
+# Function: replace_in_file
+# ============================================
+# Replaces all occurrences of a pattern with a replacement string in a file.
+#
+# @param {string} dest      - Directory containing the file
+# @param {string} file_name - Name of the file to modify
+# @param {string} from      - Pattern to search for (supports sed special chars)
+# @param {string} to        - Replacement string (supports sed special chars)
+#
+# @returns {number} 0 - replacement successful, 1 - error
+#
+# @example
+#   replace_in_file "/home/user/.config" "app.conf" "_USER_" "john"
+#   # Replaces all _USER_ with john in app.conf
+#
+# @example
+#   replace_in_file "/home/user" ".bashrc" "/old/path" "/new/path"
+#   # Replaces all /old/path with /new/path in .bashrc
+#
+# @note Special characters in patterns are automatically escaped for sed
+# @note Set SKIP_FILE_CHECK=true to skip file existence validation
+# ============================================
 replace_in_file() {
     local dest="$1"
     local file_name="$2"
@@ -21,7 +48,7 @@ replace_in_file() {
         return 1
     fi
     
-    # Проверяем существование файла только если не отключена проверка
+    # Check if file exists unless disabled
     if [[ "${SKIP_FILE_CHECK:-false}" != "true" ]]; then
         if ! check_file_exists "$full_path"; then
             log_error "File '$full_path' not found for replacement!"
@@ -43,6 +70,23 @@ replace_in_file() {
     fi
 }
 
+# ============================================
+# Function: replace_multiple_in_file
+# ============================================
+# Performs multiple search-and-replace operations on a single file.
+#
+# @param {string} file_path    - Full path to the file
+# @param {string[]} replacements - Array of [from, to, from, to, ...] pairs
+#
+# @returns {number} 0 - all replacements successful, 1 - some failed
+#
+# @example
+#   replace_multiple_in_file "/home/user/.env" \
+#       "_USER_" "john" \
+#       "_HOME_" "/home/john" \
+#       "_SHELL_" "/bin/bash"
+#   # Replaces all three patterns in .env file
+# ============================================
 replace_multiple_in_file() {
     local file_path="$1"
     shift
@@ -72,7 +116,29 @@ replace_multiple_in_file() {
     fi
 }
 
-# ---------- COPY FUNCTIONS ----------
+# ============================================
+# COPY FUNCTIONS
+# ============================================
+
+# ============================================
+# Function: copy_files
+# ============================================
+# Copies specified files from source to destination directory.
+#
+# @param {string} src           - Source directory
+# @param {string} dest          - Destination directory
+# @param {string[]} files_array - Reference to array of filenames to copy
+#
+# @returns {number} 0 - all files copied successfully, 1 - errors occurred
+#
+# @example
+#   local files=("file1.txt" "file2.conf" "script.sh")
+#   copy_files "/home/user/source" "/home/user/dest" files
+#   # Copies all three files if they exist in source
+#
+# @note Only existing files from the array are copied
+# @note Uses cp -v for verbose output
+# ============================================
 copy_files() {
     local src="$1"
     local dest="$2"
@@ -95,7 +161,7 @@ copy_files() {
         return 1
     fi
     
-    # Проверяем, есть ли файлы для копирования
+    # Check which files exist for copying
     local files_to_copy=()
     for file in "${files_array[@]}"; do
         if [[ -f "${src}${file}" ]]; then
@@ -110,7 +176,7 @@ copy_files() {
         return 0
     fi
     
-    # Копируем только указанные файлы
+    # Copy only specified files
     log_info "Copying ${#files_to_copy[@]} file(s) from '$src' to '$dest'..."
     
     local copy_success=true
@@ -132,7 +198,29 @@ copy_files() {
     fi
 }
 
-# ---------- TEMPLATE FUNCTIONS ----------
+# ============================================
+# TEMPLATE FUNCTIONS
+# ============================================
+
+# ============================================
+# Function: process_template
+# ============================================
+# Processes a template file by replacing variables and creates a new file.
+#
+# @param {string} template_file - Path to template file
+# @param {string} output_file   - Path where processed file will be saved
+# @param {string[]} vars_array  - Array of [var_name, var_value, ...] pairs
+#
+# @returns {number} 0 - processing successful, 1 - error
+#
+# @example
+#   local vars=("_USER_" "john" "_HOME_" "/home/john")
+#   process_template "/path/to/template.conf" "/path/to/output.conf" vars
+#   # Creates output.conf from template with variables replaced
+#
+# @note Template file is copied before replacements
+# @warning Output file will be overwritten if it exists
+# ============================================
 process_template() {
     local template_file="$1"
     local output_file="$2"
@@ -145,10 +233,10 @@ process_template() {
     
     log_info "Processing template '$template_file' -> '$output_file'"
     
-    # Копируем шаблон
+    # Copy template
     cp "$template_file" "$output_file"
     
-    # Заменяем переменные
+    # Replace variables
     local has_errors=false
     for ((i=0; i<${#vars_array[@]}; i+=2)); do
         local var_name="${vars_array[i]}"
@@ -163,33 +251,5 @@ process_template() {
     else
         log_info "Template processed successfully!"
         return 0
-    fi
-}
-
-# -------- CHECK IF DIRECTORY HAS SPECIFIC FILES ---------
-check_files_exist_in_dest() {
-    local dest="$1"
-    shift
-    local files_to_check=("$@")
-    
-    if ! check_folder_exists "$dest"; then
-        log_info "Directory '$dest' doesn't exist. Considered as empty."
-        return 1 # No files
-    fi
-    
-    # Check existane of files from array in destination folder
-    local found_files=()
-    for file in "${files_to_check[@]}"; do
-        if [[ -f "${dest}${file}" ]]; then
-            found_files+=("$file")
-        fi
-    done
-    
-    if [[ ${#found_files[@]} -gt 0 ]]; then
-        log_info "Directory '$dest' has ${#found_files[@]} file(s) to backup."
-        return 0 # Files exist
-    else
-        log_info "Directory '$dest' has none of the specified files."
-        return 1 # Files don't exist
     fi
 }
