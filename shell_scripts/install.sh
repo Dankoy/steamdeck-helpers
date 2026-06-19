@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================
-# Install script
+# Install script with getopts support
 # ============================================
 
 set -euo pipefail
@@ -16,14 +16,12 @@ source "${LIB_DIR}/utils.sh"
 source "${LIB_DIR}/file_ops.sh"
 # shellcheck source=/dev/null
 source "${LIB_DIR}/backup.sh"
+# shellcheck source=/dev/null
+source "${LIB_DIR}/getops_utils.sh"
 
 
-# ----------- VARIABLES -----------------
-
-set -euo pipefail  # Fail on error
-
+# ----------- DEFAULT VALUES ----------
 USER=$(whoami)
-log_info "Запуск от пользователя: $USER"
 
 ENV_SRC_FOLDER="../backup-services/env/"
 SERVICES_SRC_FOLDER="../backup-services/service/"
@@ -34,14 +32,168 @@ SERVICES_DEST_FOLDER="$HOME/.config/systemd/user/"
 BACKUP_FOLDER="$HOME/.steamdeck_helpers/backups/"
 BACKUP_RETENTION_DAYS=14
 
+VERBOSE=false
+FORCE=false
+SKIP_SYSTEMD=false
+BACKUP_ENABLED=true
+
+# ---------- HELP FUNCTION ----------
+show_usage() {
+    cat << EOF
+Usage: $0 [OPTIONS]
+
+Install script for SteamDeck helpers.
+
+OPTIONS:
+    -h, --help              Show this help message
+    -v, --verbose           Enable verbose output
+    -f, --force             Force installation (skip confirmations)
+    -s, --skip-systemd      Skip systemd daemon reload
+    -n, --no-backup         Skip backup creation
+    -e, --env-dir DIR       Environment source directory (default: $ENV_SRC_FOLDER)
+    -S, --service-dir DIR   Service source directory (default: $SERVICES_SRC_FOLDER)
+    -d, --dest-dir DIR      Environment destination directory (default: $ENV_DEST_FOLDER)
+    -D, --service-dest DIR  Service destination directory (default: $SERVICES_DEST_FOLDER)
+    -b, --backup-dir DIR    Backup directory (default: $BACKUP_FOLDER)
+    -r, --retention DAYS    Backup retention in days (default: 14)
+
+EXAMPLES:
+    $0                      Install with default settings
+    $0 -v -f                Verbose mode, force installation
+    $0 -s -n                Skip systemd reload and backups
+    $0 -e ./custom-env/     Use custom environment directory
+    $0 -r 30                Keep backups for 30 days
+    $0 --help               Show this help
+
+EOF
+    exit 0
+}
+
+# ---------- PARSE OPTIONS ----------
+parse_install_options() {
+    local optstring="hvfsne:S:d:D:b:r:"
+    
+    # Call the library function to parse options
+    parse_options "$optstring" "show_usage" "$@"
+    
+    # Now check each option and apply it
+    if is_option_set "v"; then
+        VERBOSE=true
+        export DEBUG=true
+        # Don't log here - logging system may not be fully ready
+    fi
+    
+    if is_option_set "f"; then
+        FORCE=true
+    fi
+    
+    if is_option_set "s"; then
+        SKIP_SYSTEMD=true
+    fi
+    
+    if is_option_set "n"; then
+        BACKUP_ENABLED=false
+    fi
+    
+    if is_option_set "e"; then
+        ENV_SRC_FOLDER=$(get_option_value "e" "$ENV_SRC_FOLDER")
+    fi
+    
+    if is_option_set "S"; then
+        SERVICES_SRC_FOLDER=$(get_option_value "S" "$SERVICES_SRC_FOLDER")
+    fi
+    
+    if is_option_set "d"; then
+        ENV_DEST_FOLDER=$(get_option_value "d" "$ENV_DEST_FOLDER")
+    fi
+    
+    if is_option_set "D"; then
+        SERVICES_DEST_FOLDER=$(get_option_value "D" "$SERVICES_DEST_FOLDER")
+    fi
+    
+    if is_option_set "b"; then
+        BACKUP_FOLDER=$(get_option_value "b" "$BACKUP_FOLDER")
+    fi
+    
+    if is_option_set "r"; then
+        local retention_value
+        retention_value=$(get_option_value "r" "")
+        if [[ "$retention_value" =~ ^[0-9]+$ ]]; then
+            BACKUP_RETENTION_DAYS="$retention_value"
+        else
+            log_error "Retention days must be a number!"
+            exit 1
+        fi
+    fi
+    
+    # Get remaining arguments
+    local remaining_args
+    remaining_args=$(get_remaining_args)
+    if [[ -n "$remaining_args" ]]; then
+        log_warn "Unrecognized arguments: $remaining_args"
+    fi
+    
+    # Now log the configuration (after parsing is complete)
+    if [[ "$VERBOSE" == "true" ]]; then
+        log_info "Verbose mode enabled"
+    fi
+    
+    if [[ "$FORCE" == "true" ]]; then
+        log_info "Force mode enabled"
+    fi
+    
+    if [[ "$SKIP_SYSTEMD" == "true" ]]; then
+        log_info "Skipping systemd reload"
+    fi
+    
+    if [[ "$BACKUP_ENABLED" == "false" ]]; then
+        log_info "Backups disabled"
+    fi
+}
+
+# ---------- CONFIRM OPERATION ----------
+confirm_operation() {
+    if [[ "$FORCE" == "true" ]]; then
+        log_info "Force mode enabled. Skipping confirmation."
+        return 0
+    fi
+    
+    echo ""
+    log_warn "=== INSTALLATION CONFIGURATION ==="
+    echo "User:                  $USER"
+    echo "Environment source:    $ENV_SRC_FOLDER"
+    echo "Environment dest:      $ENV_DEST_FOLDER"
+    echo "Services source:       $SERVICES_SRC_FOLDER"
+    echo "Services dest:         $SERVICES_DEST_FOLDER"
+    echo "Backup directory:      $BACKUP_FOLDER"
+    echo "Backup retention:      $BACKUP_RETENTION_DAYS days"
+    echo "Backups enabled:       $BACKUP_ENABLED"
+    echo "Systemd reload:        $(if [[ "$SKIP_SYSTEMD" == "true" ]]; then echo "SKIPPED"; else echo "ENABLED"; fi)"
+    echo "Verbose mode:          $VERBOSE"
+    echo "Force mode:            $FORCE"
+    echo ""
+    
+    read -p "Proceed with installation? [y/N] " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log_info "Installation cancelled."
+        exit 0
+    fi
+}
+
 # ---------- SYSTEMD RELOAD ------------
 systemd_reload() {
+    if [[ "$SKIP_SYSTEMD" == "true" ]]; then
+        log_info "Skipping systemd daemon reload (--skip-systemd)"
+        return 0
+    fi
+    
     if systemctl --user daemon-reload; then
         log_info "systemd daemon reloaded"
         return 0
     else
         log_error "systemd daemon reload failed"
-        exit 1
+        return 1
     fi
 }
 
@@ -68,7 +220,7 @@ get_files_from_source() {
         return 1
     fi
     
-    log_info "Found ${#result_array[@]} file(s) in source directory: ${result_array[*]}"
+    log_debug "Found ${#result_array[@]} file(s) in source directory: ${result_array[*]}"
     return 0
 }
 
@@ -82,7 +234,7 @@ prepare_directory() {
 
     # Check source directory
     if check_folder_exists "$src"; then 
-        log_info "Source directory '$src' exists."
+        log_debug "Source directory '$src' exists."
     else
         log_error "Source directory '$src' not found! Cannot continue."
         return 1
@@ -113,7 +265,7 @@ upsert() {
     local files_to_manage=("$@")
     
     log_info "Upsert operation for '$src' -> '$dest'"
-    log_info "Managing ${#files_to_manage[@]} file(s): ${files_to_manage[*]}"
+    log_debug "Managing ${#files_to_manage[@]} file(s): ${files_to_manage[*]}"
     
     # Check if there are files to upsert from source
     if [[ ${#files_to_manage[@]} -eq 0 ]]; then
@@ -121,18 +273,22 @@ upsert() {
         return 1
     fi
     
-    # CHeck if files from source already exist in destination folder
+    # Check if files from source already exist in destination folder
     if check_files_exist_in_folder "$dest" "${files_to_manage[@]}"; then
         log_warn "Destination directory '$dest' has files that need backup..."
         
-        # Create backup for files in array
-        if ! create_backup_to_dir "$dest" "$BACKUP_FOLDER" "$backup_name" "${files_to_manage[@]}"; then
-            log_error "Backup failed! Aborting update to prevent data loss."
-            return 1
+        if [[ "$BACKUP_ENABLED" == "true" ]]; then
+            # Create backup for files in array
+            if ! create_backup_to_dir "$dest" "$BACKUP_FOLDER" "$backup_name" "${files_to_manage[@]}"; then
+                log_error "Backup failed! Aborting update to prevent data loss."
+                return 1
+            fi
+            
+            # Clean backup
+            cleanup_old_backups "$BACKUP_FOLDER" "$backup_name" "$BACKUP_RETENTION_DAYS"
+        else
+            log_warn "Backups are disabled. Proceeding without backup!"
         fi
-        
-        # Clean backup
-        cleanup_old_backups "$BACKUP_FOLDER" "$backup_name" "$BACKUP_RETENTION_DAYS"
         
         # Copy files
         copy_files "$src" "$dest" files_to_manage
@@ -144,7 +300,14 @@ upsert() {
 
 # ---------- MAIN FUNCTION ----------
 main() {
+    # Parse command line options FIRST
+    parse_install_options "$@"
+    
     log_info "=== INSTALL START ==="
+    log_info "Running as user: $USER"
+    
+    # Show configuration and confirm
+    confirm_operation
     
     # 1. Check source directories
     log_info "=========== Checking source directories..."
@@ -165,7 +328,7 @@ main() {
     fi
 
     print_string
-    log_info "=========== Checking source directories done...\n"
+    log_info "=========== Checking source directories done..."
     print_string
 
     # 2. Prepare and process environment files
@@ -210,6 +373,7 @@ main() {
 
     print_string
     log_info "=========== Step 2: Done..."
+    print_string
 
     # 4. Reload systemd
     print_string
@@ -228,4 +392,4 @@ main() {
 }
 
 # ---------- RUN ----------
-main
+main "$@"
