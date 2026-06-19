@@ -31,7 +31,7 @@ SERVICES_SRC_FOLDER="../backup-services/service/"
 ENV_DEST_FOLDER="$HOME/.steamdeck_helpers/env/"
 SERVICES_DEST_FOLDER="$HOME/.config/systemd/user/"
 
-BACKUP_RETENTION_COUNT=5
+BACKUP_RETENTION_DAYS=14
 
 # ---------- SYSTEMD RELOAD ------------
 systemd_reload() {
@@ -131,7 +131,7 @@ upsert() {
         fi
         
         # Clean backup
-        cleanup_old_backups "$dest" "$backup_name" "$BACKUP_RETENTION_COUNT"
+        cleanup_old_backups "$dest" "$backup_name" "$BACKUP_RETENTION_DAYS"
         
         # Copy files
         copy_files "$src" "$dest" files_to_manage
