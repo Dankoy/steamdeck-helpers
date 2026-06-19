@@ -469,3 +469,8 @@ is_empty() {
 is_not_empty() {
     [[ -n "$1" ]]
 }
+
+print_string() {
+    local text="$1"
+    echo "$text"
+}

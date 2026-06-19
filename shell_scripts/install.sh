@@ -146,7 +146,8 @@ main() {
     log_info "=== INSTALL START ==="
     
     # 1. Check source directories
-    log_info "=========== Checking source directories...\n"
+    log_info "=========== Checking source directories..."
+    print_string
     
     if check_folder_exists "$ENV_SRC_FOLDER"; then
         log_info "Environment source directory exists."
@@ -162,8 +163,13 @@ main() {
         exit 1
     fi
 
+    print_string
+    log_info "=========== Checking source directories done...\n"
+    print_string
+
     # 2. Prepare and process environment files
-    log_info "=========== Step 1: Processing environment files...\n"
+    log_info "=========== Step 1: Processing environment files..."
+    print_string
     
     # Get list of files from source
     local env_files=()
@@ -179,8 +185,13 @@ main() {
         log_warn "No environment files to process."
     fi
 
+    print_string
+    log_info "=========== Step 1: Done..."
+    print_string
+
     # 3. Prepare and process service files
-    log_info "=========== Step 2: Processing service files...\n"
+    log_info "=========== Step 2: Processing service files..."
+    print_string
     
     # Get list of files from source
     local service_files=()
@@ -196,8 +207,13 @@ main() {
         log_warn "No service files to process."
     fi
 
+    print_string
+    log_info "=========== Step 2: Done..."
+
     # 4. Reload systemd
-    log_info "=========== Reload systemd user daemon...\n"
+    print_string
+    log_info "=========== Reload systemd user daemon..."
+    print_string
 
     if systemd_reload; then
         log_info "Systemd reloaded successfully."
@@ -206,6 +222,7 @@ main() {
         exit 1
     fi
     
+    print_string
     log_info "=== INSTALL FINISHED CORRECTLY ==="
 }
 
