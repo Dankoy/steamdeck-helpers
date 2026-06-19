@@ -31,6 +31,7 @@ SERVICES_SRC_FOLDER="../backup-services/service/"
 ENV_DEST_FOLDER="$HOME/.steamdeck_helpers/env/"
 SERVICES_DEST_FOLDER="$HOME/.config/systemd/user/"
 
+BACKUP_FOLDER="$HOME/.steamdeck_helpers/backups/"
 BACKUP_RETENTION_DAYS=14
 
 # ---------- SYSTEMD RELOAD ------------
@@ -125,13 +126,13 @@ upsert() {
         log_warn "Destination directory '$dest' has files that need backup..."
         
         # Create backup for files in array
-        if ! create_backup "$dest" "$backup_name" "${files_to_manage[@]}"; then
+        if ! create_backup_to_dir "$dest" "$BACKUP_FOLDER" "$backup_name" "${files_to_manage[@]}"; then
             log_error "Backup failed! Aborting update to prevent data loss."
             return 1
         fi
         
         # Clean backup
-        cleanup_old_backups "$dest" "$backup_name" "$BACKUP_RETENTION_DAYS"
+        cleanup_old_backups "$BACKUP_FOLDER" "$backup_name" "$BACKUP_RETENTION_DAYS"
         
         # Copy files
         copy_files "$src" "$dest" files_to_manage
