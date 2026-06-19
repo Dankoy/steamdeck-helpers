@@ -96,8 +96,8 @@ create_backup() {
 # @note Backup directory is created automatically if it doesn't exist
 # ============================================
 create_backup_to_dir() {
-    local backup_dir="$1"
-    local source_dir="$2"
+    local source_dir="$1"
+    local backup_dir="$2"
     local backup_name="$3"
     shift 3
     local files_to_backup=("$@")
