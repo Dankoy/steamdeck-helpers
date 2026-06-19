@@ -70,6 +70,112 @@ create_backup() {
 }
 
 # ============================================
+# Function: create_backup_to_dir
+# ============================================
+# Creates a tar.gz backup archive of specified files from a source directory
+# and saves it to a specified backup directory.
+#
+# @param {string} backup_dir   - Directory where backup archive will be stored
+# @param {string} source_dir   - Source directory containing files to backup
+# @param {string} backup_name  - Prefix for the backup filename (used in archive name)
+# @param {string[]} files      - Array of filenames to backup (passed after backup_name)
+#
+# @returns {number} 0 - success, 1 - error
+#
+# @example
+#   create_backup_to_dir "/home/user/backups" "/home/user/.config" "app" ".bashrc" ".profile"
+#   # Creates: /home/user/backups/app_backup_2024-01-15_12-30-45.tar.gz
+#
+# @example
+#   local files=(".env" ".env.local")
+#   create_backup_to_dir "/home/user/backups" "/home/user/project" "env" "${files[@]}"
+#   # Creates: /home/user/backups/env_backup_2024-01-15_12-30-45.tar.gz
+#
+# @note Files with .tar.gz extension are automatically excluded from backup
+# @note Only existing files from the provided list are included in the backup
+# @note Backup directory is created automatically if it doesn't exist
+# ============================================
+create_backup_to_dir() {
+    local backup_dir="$1"
+    local source_dir="$2"
+    local backup_name="$3"
+    shift 3
+    local files_to_backup=("$@")
+    
+    # Validate arguments
+    if is_empty "$backup_dir"; then
+        log_error "create_backup_to_dir: backup directory path is empty!"
+        return 1
+    fi
+    
+    if is_empty "$source_dir"; then
+        log_error "create_backup_to_dir: source directory path is empty!"
+        return 1
+    fi
+    
+    if is_empty "$backup_name"; then
+        log_error "create_backup_to_dir: backup name is empty!"
+        return 1
+    fi
+    
+    # Check if source directory exists
+    if ! check_folder_exists "$source_dir"; then
+        log_error "Source directory '$source_dir' not found!"
+        return 1
+    fi
+    
+    # Check if there are files to backup
+    if [[ ${#files_to_backup[@]} -eq 0 ]]; then
+        log_info "No files specified for backup. Skipping."
+        return 0
+    fi
+    
+    # Ensure backup directory exists
+    if ! check_folder_exists "$backup_dir"; then
+        log_info "Backup directory '$backup_dir' doesn't exist. Creating..."
+        if mkdir -p "$backup_dir" 2>/dev/null; then
+            log_info "Backup directory created successfully."
+        else
+            log_error "Failed to create backup directory '$backup_dir'!"
+            return 1
+        fi
+    fi
+    
+    # Check which files actually exist in source directory
+    local existing_files=()
+    for file in "${files_to_backup[@]}"; do
+        if [[ -f "${source_dir}${file}" ]]; then
+            existing_files+=("$file")
+        else
+            log_debug "File '${file}' not found in source, skipping."
+        fi
+    done
+    
+    if [[ ${#existing_files[@]} -eq 0 ]]; then
+        log_info "None of the specified files exist in '$source_dir'. No backup needed."
+        return 0
+    fi
+    
+    # Create backup
+    local timestamp
+    timestamp=$(date +%Y-%m-%d_%H-%M-%S)
+    local backup_file="${backup_dir}${backup_name}_backup_${timestamp}.tar.gz"
+    
+    log_info "Creating backup of ${#existing_files[@]} file(s) to '$backup_file'..."
+    
+    # Create tar backup (excluding existing .tar.gz files)
+    if tar -czf "$backup_file" -C "$source_dir" --exclude='*.tar.gz' "${existing_files[@]}" 2>/dev/null; then
+        local backup_size
+        backup_size=$(du -h "$backup_file" | cut -f1)
+        log_info "Backup created successfully: $(basename "$backup_file") (${#existing_files[@]} files, $backup_size)"
+        return 0
+    else
+        log_error "Failed to create backup!"
+        return 1
+    fi
+}
+
+# ============================================
 # Function: cleanup_old_backups
 # ============================================
 # Removes backups older than the specified number of days.
