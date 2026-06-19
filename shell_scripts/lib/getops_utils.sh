@@ -6,23 +6,21 @@
 # Function: parse_options
 # ============================================
 # Parses command line options using getopts and stores them in global variables.
-# This is a wrapper around getopts for consistent option handling.
 #
 # @param {string} optstring   - getopts option string (e.g., "f:o:vh")
-# @param {string[]} args      - Array of arguments to parse (typically "$@")
 # @param {string} usage_func  - Name of usage/help function to call on -h or error
+# @param {string[]} args      - Array of arguments to parse (typically "$@")
 #
 # @example
-#   parse_options "f:o:vh" "$@" "show_usage"
+#   parse_options "f:o:vh" "show_usage" "$@"
 #   # Parses: -f file -o output -v -h
 #
 # @note Sets global variables with "OPT_" prefix
 # ============================================
 parse_options() {
     local optstring="$1"
-    shift
-    local usage_func="$1"
-    shift
+    local usage_func="$2"
+    shift 2
     local args=("$@")
     
     local opt
@@ -30,6 +28,9 @@ parse_options() {
     
     # Reset OPTIND
     OPTIND=1
+    
+    # Reset OPTARG to avoid unbound variable
+    OPTARG=""
     
     while getopts "$optstring" opt; do
         case $opt in
@@ -59,7 +60,8 @@ parse_options() {
             *)
                 # Store option value in global variable
                 local var_name="OPT_${opt}"
-                if [[ -n "$OPTARG" ]]; then
+                # Only use OPTARG if it's set and non-empty
+                if [[ -n "${OPTARG:-}" ]]; then
                     export "$var_name"="$OPTARG"
                 else
                     export "$var_name"=true
@@ -134,5 +136,7 @@ is_option_set() {
 #   # Returns: args after options
 # ============================================
 get_remaining_args() {
-    echo "${OPT_ARGS[@]}"
+    if [[ -n "${OPT_ARGS:-}" ]]; then
+        echo "${OPT_ARGS[@]}"
+    fi
 }
