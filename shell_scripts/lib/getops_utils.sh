@@ -16,15 +16,14 @@
 #   parse_options "f:o:vh" "$@" "show_usage"
 #   # Parses: -f file -o output -v -h
 #
-# @note Sets global variables with "OPT_" prefix and removes parsed arguments
-# @note The function modifies the global OPT_ARGS array
+# @note Sets global variables with "OPT_" prefix
 # ============================================
 parse_options() {
     local optstring="$1"
     shift
+    local usage_func="$1"
+    shift
     local args=("$@")
-    local usage_func="${args[-1]}"
-    unset 'args[-1]'
     
     local opt
     local opt_value
@@ -121,4 +120,19 @@ is_option_set() {
     local var_name="OPT_${option_name}"
     
     [[ -n "${!var_name:-}" ]]
+}
+
+# ============================================
+# Function: get_remaining_args
+# ============================================
+# Returns the remaining arguments after parsing options.
+#
+# @output {string[]} The remaining arguments
+#
+# @example
+#   get_remaining_args
+#   # Returns: args after options
+# ============================================
+get_remaining_args() {
+    echo "${OPT_ARGS[@]}"
 }
