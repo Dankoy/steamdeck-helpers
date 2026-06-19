@@ -121,7 +121,7 @@ upsert() {
     fi
     
     # CHeck if files from source already exist in destination folder
-    if check_files_exist_in_dest "$dest" "${files_to_manage[@]}"; then
+    if check_files_exist_in_folder "$dest" "${files_to_manage[@]}"; then
         log_warn "Destination directory '$dest' has files that need backup..."
         
         # Create backup for files in array
