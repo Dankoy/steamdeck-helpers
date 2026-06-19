@@ -36,6 +36,7 @@ VERBOSE=false
 FORCE=false
 SKIP_SYSTEMD=false
 BACKUP_ENABLED=true
+DRY_RUN=false
 
 # ---------- HELP FUNCTION ----------
 show_usage() {
@@ -50,6 +51,7 @@ OPTIONS:
     -f, --force             Force installation (skip confirmations)
     -s, --skip-systemd      Skip systemd daemon reload
     -n, --no-backup         Skip backup creation
+    -y, --dry-run           Print commands without executing them (dry run)
     -e, --env-dir DIR       Environment source directory (default: $ENV_SRC_FOLDER)
     -S, --service-dir DIR   Service source directory (default: $SERVICES_SRC_FOLDER)
     -d, --dest-dir DIR      Environment destination directory (default: $ENV_DEST_FOLDER)
@@ -61,6 +63,8 @@ EXAMPLES:
     $0                      Install with default settings
     $0 -v -f                Verbose mode, force installation
     $0 -s -n                Skip systemd reload and backups
+    $0 -y                   Show what would be done (dry run)
+    $0 -y -v                Dry run with verbose output
     $0 -e ./custom-env/     Use custom environment directory
     $0 -r 30                Keep backups for 30 days
     $0 --help               Show this help
@@ -71,7 +75,7 @@ EOF
 
 # ---------- PARSE OPTIONS ----------
 parse_install_options() {
-    local optstring="hvfsne:S:d:D:b:r:"
+    local optstring="hvfsnye:S:d:D:b:r:"
     
     # Call the library function to parse options
     parse_options "$optstring" "show_usage" "$@"
@@ -80,7 +84,6 @@ parse_install_options() {
     if is_option_set "v"; then
         VERBOSE=true
         export DEBUG=true
-        # Don't log here - logging system may not be fully ready
     fi
     
     if is_option_set "f"; then
@@ -93,6 +96,10 @@ parse_install_options() {
     
     if is_option_set "n"; then
         BACKUP_ENABLED=false
+    fi
+    
+    if is_option_set "y"; then
+        DRY_RUN=true
     fi
     
     if is_option_set "e"; then
@@ -149,6 +156,10 @@ parse_install_options() {
     if [[ "$BACKUP_ENABLED" == "false" ]]; then
         log_info "Backups disabled"
     fi
+    
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_info "DRY RUN MODE: Commands will be printed but NOT executed"
+    fi
 }
 
 # ---------- CONFIRM OPERATION ----------
@@ -171,7 +182,19 @@ confirm_operation() {
     echo "Systemd reload:        $(if [[ "$SKIP_SYSTEMD" == "true" ]]; then echo "SKIPPED"; else echo "ENABLED"; fi)"
     echo "Verbose mode:          $VERBOSE"
     echo "Force mode:            $FORCE"
+    echo "Dry run mode:          $DRY_RUN"
     echo ""
+    
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_warn "DRY RUN MODE: No changes will be made to the system."
+        read -p "Show dry run commands? [y/N] " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Dry run cancelled."
+            exit 0
+        fi
+        return 0
+    fi
     
     read -p "Proceed with installation? [y/N] " -n 1 -r
     echo
@@ -181,10 +204,35 @@ confirm_operation() {
     fi
 }
 
+# ---------- EXECUTE OR PRINT ----------
+execute_or_print() {
+    local cmd="$1"
+    local description="${2:-}"
+    
+    if [[ "$DRY_RUN" == "true" ]]; then
+        if [[ -n "$description" ]]; then
+            echo "  [DRY RUN] $description"
+        fi
+        echo "  > $cmd"
+        return 0
+    else
+        eval "$cmd"
+        return $?
+    fi
+}
+
 # ---------- SYSTEMD RELOAD ------------
 systemd_reload() {
     if [[ "$SKIP_SYSTEMD" == "true" ]]; then
         log_info "Skipping systemd daemon reload (--skip-systemd)"
+        return 0
+    fi
+    
+    local cmd="systemctl --user daemon-reload"
+    
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_info "[DRY RUN] Would reload systemd user daemon"
+        echo "  > $cmd"
         return 0
     fi
     
@@ -247,6 +295,14 @@ prepare_directory() {
     else
         log_info "Destination directory '$dest' doesn't exist. Create it."
 
+        local cmd="mkdir -p \"$dest\""
+        
+        if [[ "$DRY_RUN" == "true" ]]; then
+            log_info "[DRY RUN] Would create directory: $dest"
+            echo "  > $cmd"
+            return 0
+        fi
+        
         if mkdir -p "$dest" 2>/dev/null; then
             log_info "Destination directory '$dest' created successfully."
             return 0
@@ -291,9 +347,26 @@ upsert() {
         fi
         
         # Copy files
+        if [[ "$DRY_RUN" == "true" ]]; then
+            log_info "[DRY RUN] Would copy files from '$src' to '$dest'"
+            for file in "${files_to_manage[@]}"; do
+                echo "  > cp -v \"${src}${file}\" \"${dest}\""
+            done
+            return 0
+        fi
+        
         copy_files "$src" "$dest" files_to_manage
     else
         log_info "Directory '$dest' has no files to backup. Initial install."
+        
+        if [[ "$DRY_RUN" == "true" ]]; then
+            log_info "[DRY RUN] Would copy files from '$src' to '$dest'"
+            for file in "${files_to_manage[@]}"; do
+                echo "  > cp -v \"${src}${file}\" \"${dest}\""
+            done
+            return 0
+        fi
+        
         copy_files "$src" "$dest" files_to_manage
     fi
 }
@@ -305,6 +378,11 @@ main() {
     
     log_info "=== INSTALL START ==="
     log_info "Running as user: $USER"
+    
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_warn "DRY RUN MODE ACTIVATED - No changes will be made"
+        echo ""
+    fi
     
     # Show configuration and confirm
     confirm_operation
@@ -388,7 +466,13 @@ main() {
     fi
     
     print_string
-    log_info "=== INSTALL FINISHED CORRECTLY ==="
+    
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_warn "DRY RUN COMPLETED - No changes were made to the system"
+        log_info "Remove -y flag to perform actual installation"
+    else
+        log_info "=== INSTALL FINISHED CORRECTLY ==="
+    fi
 }
 
 # ---------- RUN ----------
