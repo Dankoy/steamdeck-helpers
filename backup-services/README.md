@@ -5,15 +5,17 @@ Contains backup services for steamdeck or other linux os
 ## services
 
 1) retroarch-backup.service - backup retroarch save files
-3) emudeck-copy-roms.service - copy roms from custom directories to flat directory for emudeck rom folders. Using copir-py script.
-4) yuzu-backup.service - backup yuzu save files
-6) ryujinx-backup.service - backup ryujinx files (read below about tweaks)
+2) emudeck-copy-roms.service - copy roms from custom directories to flat directory for emudeck rom folders. Using copir-py script.
+3) yuzu-backup.service - backup yuzu save files
+4) ryujinx-backup.service - backup ryujinx save files (read below about tweaks)
+5) eden-backup.service - backup eden save files
 
 ## timers
 
 1) retroarch-backup.timer - timer for backup service
 2) yuzu-backup.timer - timer for backup service
 3) ryujinx-backup.timer - timer for backup service.
+4) eden-backup.timer - timer for backup service.
 
 ## environment files
 

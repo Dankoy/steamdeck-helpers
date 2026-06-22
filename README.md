@@ -31,7 +31,9 @@ Contains linux services to run scripts and timer necessary for:
 
 1) Backup retroarch saves
 2) Backup yuzu saves
-3) Copy roms from custom folders to flat folder used by [EmuDeck](https://www.emudeck.com/) using
+3) Backup eden saves
+4) Backup ryujinx saves
+5) Copy roms from custom folders to flat folder used by [EmuDeck](https://www.emudeck.com/) using
    [copir-py](copir-py) project
 
 # shell_scripts [link](shell_scripts)
