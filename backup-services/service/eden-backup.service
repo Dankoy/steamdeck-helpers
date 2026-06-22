@@ -1,0 +1,10 @@
+[Unit]
+Description=Copy eden saves to backup folders
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.steamdeck_helpers/env/eden-backup.env
+ExecStart=sh -c 'rsync -avzhm ${source_folder} ${destination_folder}'
+
+[Install]
+WantedBy=default.target
